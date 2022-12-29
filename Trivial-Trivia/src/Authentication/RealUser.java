@@ -23,6 +23,7 @@ public class RealUser implements User
         game.play();
     }
 
+
     @Override
     public String getUserInfo()
     {
@@ -59,6 +60,11 @@ public class RealUser implements User
 
     public void setScore(int score) {
         this.score = score;
+    }
+
+    @Override
+    public void setAuthenticated(boolean authentication) {
+        //code
     }
 
 }

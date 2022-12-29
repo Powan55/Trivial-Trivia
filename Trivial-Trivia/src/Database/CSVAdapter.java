@@ -8,7 +8,7 @@ public class CSVAdapter implements Database{
     public ArrayList<String[]> readFile(String fileName) {
 
         try{
-            File NewFile = new File("src/testdata.txt");
+            File NewFile = new File("Trivial-Trivia/src/Data/testdata2");
             System.out.println(NewFile.getCanonicalPath());
             FileInputStream File_Input_Stream = new FileInputStream(NewFile);
 

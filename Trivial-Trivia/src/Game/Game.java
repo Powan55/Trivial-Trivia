@@ -1,9 +1,9 @@
 package Game;
 
-import Authentication.*;
-
 import java.util.ArrayList;
 import java.util.Scanner;
+import Authentication.*;
+
 
 public class Game
 {

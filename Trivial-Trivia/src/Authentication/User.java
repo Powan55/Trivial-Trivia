@@ -10,6 +10,7 @@ public interface User
     public void addQuestions(String data[]);
     public int getScore();
     public void setScore(int score);
+    public void setAuthenticated(boolean authentication);
 
 
 }
