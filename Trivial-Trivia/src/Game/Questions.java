@@ -1,13 +1,14 @@
 package Game;
 
 import java.util.ArrayList;
+import Database.*;
 
 public class Questions
 {
     private ArrayList<String[]> question;
     private String fileName;
 
-    //private Database.Database file;
+    private Database file;
 
     public Questions()
     {
@@ -17,14 +18,14 @@ public class Questions
 
     public ArrayList<String[]> getQuestion()
     {
-        //add code
+        question = file.readFile(fileName);
         return question;
     }
 
     public void addQuestion(String data[])
     {
         question.add(data);
-        //call write function from database
+        file.writeFile(fileName, question);
     }
 
 }
