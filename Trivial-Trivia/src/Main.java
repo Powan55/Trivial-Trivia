@@ -13,9 +13,9 @@ public class Main {
 //                System.out.println(s);
 //            }
 //        }
-        String[] key = {"7","Uttam","POPSO"};
+        String[] key = {"10","wink","POPSO"};
         data.add(key);
-        String[] key2 = {"MONKEY","DONKEY","TEA"};
+        String[] key2 = {"MON","DON","TEA"};
         data.add(key2);
 
         data.add(key);

@@ -26,11 +26,10 @@ public class CSVAdapter implements Database{
     @Override
     public void writeFile(String fileName, ArrayList<String[]> data) {
         try {
-            CSVWriter writer = new CSVWriter(new FileWriter(fileName, true));
+            CSVWriter writer = new CSVWriter(new FileWriter(fileName, false));
             for (String[] row : data) {
                 for (int i = 0; i < row.length; i++) {
-                    String str = row[i].replaceAll("^\"|\"$", "");
-                    row[i] = str;
+                    row[i] = row[i].replace("\"", "");
                 }
                 writer.writeNext(row);
             }
@@ -39,4 +38,6 @@ public class CSVAdapter implements Database{
             e.printStackTrace();
         }
     }
+
+
 }
