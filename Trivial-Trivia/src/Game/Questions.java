@@ -7,7 +7,7 @@ public class Questions
     private ArrayList<String[]> question;
     private String fileName;
 
-    //private Database file;
+    //private Database.Database file;
 
     public Questions()
     {
