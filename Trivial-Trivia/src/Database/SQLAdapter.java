@@ -10,13 +10,19 @@ import java.util.ArrayList;
 public class SQLAdapter implements Database {
     private final Connection connection;
 
-    private String USERNAME = "uttambhattarai";
-    private String PASSWORD = "0713";
-    private String URL = "postgres://uttambhattarai@localhost:5432/uttambhattarai";
+    //    private String URL = "postgres://uttambhattarai@localhost:5432/uttambhattarai";
+
+    private String USERNAME = "Trivia";
+    private String PASSWORD = "Laxmi1234@";
+    private String HOST = "";
+    private String DATABASE = "";
+    private String PORT = "";
 
 
-    public SQLAdapter(String url, String username, String password) throws SQLException {
-        this.connection = DriverManager.getConnection(url, username, password);
+
+    public SQLAdapter() throws SQLException {
+        String url = "jdbc:postgresql://" + HOST + ":" + PORT + "/" + DATABASE;
+        this.connection = DriverManager.getConnection(url, USERNAME, PASSWORD);
     }
 
     @Override
