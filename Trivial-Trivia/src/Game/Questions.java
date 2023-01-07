@@ -17,14 +17,14 @@ public class Questions
 
     public ArrayList<String[]> getQuestion()
     {
-        //add code
+
+
         return question;
     }
 
     public void addQuestion(String data[])
     {
         question.add(data);
-        //call write function from database
     }
 
 }

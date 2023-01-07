@@ -2,6 +2,8 @@ package Database;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
+import com.opencsv.exceptions.CsvValidationException;
+
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -20,6 +22,8 @@ public class CSVAdapter implements Database{
             }
         }catch (IOException e){
             e.printStackTrace();
+        } catch (CsvValidationException e) {
+            throw new RuntimeException(e);
         }
         return data;
     }

@@ -12,16 +12,17 @@ public class SQLAdapter implements Database {
 
     //    private String URL = "postgres://uttambhattarai@localhost:5432/uttambhattarai";
 
-    private String USERNAME = "Trivia";
+    private String USERNAME = "postgres";
     private String PASSWORD = "Laxmi1234@";
-    private String HOST = "";
-    private String DATABASE = "";
-    private String PORT = "";
+    private String HOST = "localhost";
+    private String DATABASE = "Trivia";
+    private String PORT = "5432";
 
 
 
     public SQLAdapter() throws SQLException {
         String url = "jdbc:postgresql://" + HOST + ":" + PORT + "/" + DATABASE;
+        String url2 = "Trivia/postgres@PostgreSQL 11";
         this.connection = DriverManager.getConnection(url, USERNAME, PASSWORD);
     }
 

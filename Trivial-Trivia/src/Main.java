@@ -21,9 +21,14 @@ public class Main {
 //        file.writeFile("Trivial-Trivia/src/Data/TestcsvData.csv",data);
 
         Database adapter = new SQLAdapter();
-        adapter.HOST = "localhost";
-        adapter.DATABASE = "mydatabase";
-        adapter.PORT = "5432";
+        ArrayList<String[]> data = adapter.readFile("User");
+
+        for (String[] str:data
+             ) {
+            for (int i = 0; i < str.length; i++) {
+                System.out.println(str[i]);
+            }
+        }
 
    }
 
