@@ -2,13 +2,11 @@ package Database;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
-import com.opencsv.exceptions.CsvValidationException;
-
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.*;
 import java.util.ArrayList;
+import com.opencsv.exceptions.CsvConstraintViolationException;
 
 public class CSVAdapter implements Database{
     @Override
@@ -20,13 +18,12 @@ public class CSVAdapter implements Database{
             while((line = reader.readNext()) != null){
                 data.add(line);
             }
-        }catch (IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
-        } catch (CsvValidationException e) {
-            throw new RuntimeException(e);
         }
         return data;
     }
+
     @Override
     public void writeFile(String fileName, ArrayList<String[]> data) {
         try {
