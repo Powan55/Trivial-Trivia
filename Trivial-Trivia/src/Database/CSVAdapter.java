@@ -2,11 +2,12 @@ package Database;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
+
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import com.opencsv.exceptions.CsvConstraintViolationException;
+//import com.opencsv.exceptions.CsvConstraintViolationException;
 
 public class CSVAdapter implements Database{
     @Override
