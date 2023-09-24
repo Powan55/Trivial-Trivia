@@ -40,11 +40,9 @@ public class Game
 
     }
 
-    public void addQuestion()
+    public void addQuestion(String data[])
     {
-        //String data[4] = new String[];
-
-       // question.addQuestion(data);
+       question.addQuestion(data);
     }
 }
 

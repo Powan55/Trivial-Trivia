@@ -17,7 +17,6 @@ public class Login
             if(str[0].equals(username) && str[1].equals(password))
                 return true;
         }
-
         return false;
     }
 }
