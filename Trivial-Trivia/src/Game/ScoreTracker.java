@@ -1,16 +1,4 @@
-package Game;
-import Authentication.*;
 
-public class ScoreTracker
-{
-    private User user;
-    //Main.Database.Database file;
-
-    public ScoreTracker(User user)
-    {
-        this.user = user;
-        //file = new Database.CSVAdapter();  // Database.Database needs to be implimented
-    }
 
     public void ansChecker(String userInput, String ans)
     {
