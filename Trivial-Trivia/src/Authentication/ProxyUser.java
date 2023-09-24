@@ -13,6 +13,8 @@ public class ProxyUser implements User{
         isAuthenticated = false;
         user = new RealUser();
     }
+
+
     @Override
     public void play() {
         user.play();
@@ -20,7 +22,10 @@ public class ProxyUser implements User{
 
     @Override
     public String getUserInfo() {
-        return null;
+        if(isAuthenticated)
+            return user.getUserInfo();
+        else
+            return "Authentication.User: Guest\nScore: "+ user.getScore();
     }
 
     @Override
@@ -30,26 +35,37 @@ public class ProxyUser implements User{
 
     @Override
     public void importData(String fileName) {
-
+        if(isAuthenticated)
+            user.importData(fileName);
+        else
+            System.out.println("Please login to use this function!!");
     }
 
     @Override
-    public void exportData(String fileName) {
+    public void exportData(String fileName)
+    {
+        if(isAuthenticated)
+            user.exportData(fileName);
+        else
+            System.out.println("Please login to use this function!!");
     }
 
     @Override
     public void addQuestions(String data[]) {
-
+        if(isAuthenticated)
+            user.addQuestions(data);
+        else
+            System.out.println("Please login to use this function!!");
     }
 
     @Override
     public int getScore() {
-        return 0;
+        return user.getScore();
     }
 
     @Override
     public void setScore(int score) {
-
+        user.setScore(score);
     }
 
     public void setAuthenticated(boolean authentication)
