@@ -16,9 +16,8 @@ public class Main {
 
         file.writeFile("Trivial-Trivia/src/Data/StatData.csv", data);
 
-        System.out.println("ho");
         ArrayList<String[]> readData = file.readFile("Trivial-Trivia/src/Data/StatData.csv");
-        System.out.println("ho2");
+
         for (String[] row : readData){
             for (int i = 0; i < row.length; i++) {
                 System.out.println(row[i]+" ");
