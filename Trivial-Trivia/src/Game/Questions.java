@@ -19,13 +19,7 @@ public class Questions
     public ArrayList<String[]> getQuestion()
     {
         question = file.readFile(fileName);
-        return question;
-    }
 
-    public void addQuestion(String data[])
-    {
-        question.add(data);
-        file.writeFile(fileName, question);
     }
 
 }
