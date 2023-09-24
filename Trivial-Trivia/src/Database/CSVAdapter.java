@@ -1,33 +1,47 @@
+
 package Database;
 
-import java.io.*;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVWriter;
+
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
+//import com.opencsv.exceptions.CsvConstraintViolationException;
 
 public class CSVAdapter implements Database{
     @Override
     public ArrayList<String[]> readFile(String fileName) {
-
+        ArrayList<String[]> data = new ArrayList<>();
         try{
-            File NewFile = new File("Trivial-Trivia/src/Data/testdata2");
-            System.out.println(NewFile.getCanonicalPath());
-            FileInputStream File_Input_Stream = new FileInputStream(NewFile);
-
-            DataInputStream Data_Input_Stream = new DataInputStream(File_Input_Stream);
-            BufferedReader Buffered_Reader = new BufferedReader(new InputStreamReader(Data_Input_Stream));
-            String line;
-
-            while((line = Buffered_Reader.readLine()) != null){
-                System.out.println(line);
+            CSVReader reader = new CSVReader(new FileReader(fileName));
+            String[] line;
+            while((line = reader.readNext()) != null){
+                data.add(line);
             }
-            Data_Input_Stream.close();
-        }catch(Exception e){
-            System.err.println("Error: " + e.getMessage());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return null;
+        return data;
     }
 
     @Override
     public void writeFile(String fileName, ArrayList<String[]> data) {
-
+        try {
+            CSVWriter writer = new CSVWriter(new FileWriter(fileName, false));
+            for (String[] row : data) {
+                for (int i = 0; i < row.length; i++) {
+                    row[i] = row[i].replace("\"", "");
+                }
+                writer.writeNext(row);
+            }
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
+
+
 }
+
