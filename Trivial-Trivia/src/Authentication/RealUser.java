@@ -16,6 +16,14 @@ public class RealUser implements User
         game = new Game(this);
     }
 
+    public RealUser(String name, String userName, String password)
+    {
+        this.name = name;
+        this.userName = userName;
+        this.password = password;
+        score = 0;
+        game = new Game(this);
+    }
 
     @Override
     public void play()
