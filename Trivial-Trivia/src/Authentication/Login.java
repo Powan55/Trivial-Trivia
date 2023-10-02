@@ -3,20 +3,29 @@ package Authentication;
 import Database.*;
 
 import java.util.ArrayList;
+import java.util.Scanner;
 
 public class Login
 {
-    private Database database;
-    ArrayList<String[]> data;
-    public boolean authenticate(String username, String password)
+    public boolean authenticate()
     {
-        database = new CSVAdapter();
-        data = database.readFile("Trivial-Trivia/src/Data/loginData.txt");
+        Database database = new CSVAdapter();
+        ArrayList<String[]> data = database.readFile("Trivial-Trivia/src/Data/loginData.txt");
 
-        for (String str[]: data) {
-            if(str[0].equals(username) && str[1].equals(password))
+        Scanner scan = new Scanner(System.in);
+        System.out.print("Enter your username: ");
+        String username = scan.nextLine();
+        System.out.print("Enter your password: ");
+        String password = scan.nextLine();
+
+        for (String[] str: data) {
+            if(str[1].equals(username) && str[2].equals(password)){
+                System.out.println("You have been logged in successfully.");
                 return true;
+            }
+
         }
+        System.out.println("Login was unsuccessful! Please try again.");
         return false;
     }
 }
