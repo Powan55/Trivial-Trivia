@@ -1,4 +1,13 @@
+package Game;
+import Authentication.User;
 
+public class ScoreTracker {
+
+    private User user;
+
+    public ScoreTracker(User user){
+        this.user = user;
+    }
 
     public void ansChecker(String userInput, String ans)
     {

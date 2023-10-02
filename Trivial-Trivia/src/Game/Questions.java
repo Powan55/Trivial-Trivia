@@ -1,7 +1,8 @@
 package Game;
 
+import Database.Database;
+
 import java.util.ArrayList;
-import Database.*;
 
 public class Questions
 {
@@ -18,8 +19,10 @@ public class Questions
 
     public ArrayList<String[]> getQuestion()
     {
+        //TODO need to format the questions into 2D array with question, answer, and option format
         question = file.readFile(fileName);
 
+        return null;
     }
 
 }

@@ -1,8 +1,9 @@
 package Game;
 
+import Authentication.User;
+
 import java.util.ArrayList;
 import java.util.Scanner;
-import Authentication.*;
 
 
 public class Game
@@ -42,7 +43,8 @@ public class Game
 
     public void addQuestion(String data[])
     {
-       question.addQuestion(data);
+        //TODO Need to fix Question class first
+     //   question.addQuestion(data);
     }
 }
 
