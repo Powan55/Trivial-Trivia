@@ -23,7 +23,6 @@ public class Login
                 System.out.println("You have been logged in successfully.");
                 return true;
             }
-
         }
         System.out.println("Login was unsuccessful! Please try again.");
         return false;
