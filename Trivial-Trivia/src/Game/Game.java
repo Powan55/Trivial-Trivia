@@ -1,6 +1,6 @@
 package Game;
 
-import Authentication.User;
+import Authentication.ProxyUser;
 
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -13,12 +13,12 @@ public class Game
     private Scanner scan;
     private ScoreTracker score;
 
-    public Game(User user)
+    public Game()
     {
         questions = new Questions();
         queList = new ArrayList<>();
         scan = new Scanner(System.in);
-        score = new ScoreTracker(user);
+        score = new ScoreTracker(ProxyUser.getInstance());
     }
     public void play()
     {
@@ -32,6 +32,7 @@ public class Game
             if(userInput == 5) {
                 break;
             }
+            score.ansChecker(question.getOption(userInput), question.getAnswer());
         }
     }
 

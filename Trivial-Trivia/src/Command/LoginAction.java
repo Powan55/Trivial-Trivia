@@ -8,7 +8,7 @@ public class LoginAction implements Action{
     @Override
     public void execute()
     {
-        User user = new ProxyUser();
+        User user = ProxyUser.getInstance();
         Login login = new Login();
         user.setAuthenticated(login.authenticate());
     }

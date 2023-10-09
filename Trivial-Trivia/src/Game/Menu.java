@@ -65,13 +65,20 @@ public class Menu
         int userInput = 0;
         while (userInput != 5){
             System.out.println("Please one of the following options:\n" +
-                    "1. Play\n5. Exit");
+                    "1. Play\n2. View Stat\n5. Exit");
             userInput = scan.nextInt();
 
             switch (userInput) {
                 case 1: {
                     action = new PlayAction();
                     action.execute();
+                    break;
+                }
+                case 2:{
+                    System.out.println();
+                    action = new ViewStatAction();
+                    action.execute();
+                    System.out.println("\n");
                     break;
                 }
                 case 5: {
