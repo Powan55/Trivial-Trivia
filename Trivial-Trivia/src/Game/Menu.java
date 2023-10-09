@@ -9,18 +9,26 @@ public class Menu
     private Action action;
     private Scanner scan;
 
+
+    /**
+     * Displays the main menu for the Trivial Trivia game, allowing the user to choose from various options
+     * such as logging in, continuing as a guest, creating a new account, or exiting the game.
+     * This method reads user input and triggers corresponding actions based on the user's choice.
+     * After executing the selected action, it calls the `menu2()` method to display the next menu or
+     * terminates the game if the user chooses to exit.
+     */
     public void menu()
     {
-        int userinput = 0;
+        int userInput = 0;
         scan = new Scanner(System.in);
 
 
-        System.out.println("Welcome To Trival Trivia\n" +
+        System.out.println("Welcome To Trivial Trivia\n" +
                 "Please select the user type.\n" +
-                "1. Login\n2. Contunue as guest\n3. Create a new account");
-        userinput = scan.nextInt();
+                "1. Login\n2. Continue as guest\n3. Create a new account");
+        userInput = scan.nextInt();
 
-        switch (userinput) {
+        switch (userInput) {
             case 1:{
                 action = new LoginAction();
                 action.execute();
@@ -45,6 +53,7 @@ public class Menu
             }
             default:{
                 System.out.println("Please select a valid option");
+                break;
             }
 
 
@@ -52,14 +61,31 @@ public class Menu
     }
     private void menu2()
     {
-        int userinput = 0;
+        scan = new Scanner(System.in);
+        int userInput = 0;
+        while (userInput != 5){
+            System.out.println("Please one of the following options:\n" +
+                    "1. Play\n5. Exit");
+            userInput = scan.nextInt();
 
-        System.out.println("Please select the user type.\n" +
-                "1. Login\n2. Continue as guest\n3. Create a new account");
-        userinput = scan.nextInt();
+            switch (userInput) {
+                case 1: {
+                    action = new PlayAction();
+                    action.execute();
+                    break;
+                }
+                case 5: {
+                    System.out.println("Exiting the Game.");
+                    System.out.println("Game Summery");
+                    //TODO Add the necessary code to display a game summery for user once they chose to exit.
+                    break;
+                }
+                default:{
+                    System.out.println("Invalid option!!\nPlease select a valid option.");
+                    break;
+                }
 
-        switch (userinput){
-            //add code
+            }
         }
     }
 }
