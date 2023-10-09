@@ -14,6 +14,19 @@ public class Question {
         this.answer = answer;
     }
 
+    public String getOption(int index){
+        switch (index){
+            case 1:
+                return option1;
+            case 2:
+                return option2;
+            case 3:
+                return option3;
+            case 4:
+                return option4;
+        }
+        return "";
+    }
     public String getQuestion() {
         return question;
     }
