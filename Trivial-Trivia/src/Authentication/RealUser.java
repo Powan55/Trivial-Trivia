@@ -13,7 +13,7 @@ public class RealUser implements User
     public RealUser()
     {
         score = 0;
-        game = new Game(this);
+        game = new Game();
     }
 
     public RealUser(String name, String userName, String password)
@@ -22,7 +22,7 @@ public class RealUser implements User
         this.userName = userName;
         this.password = password;
         score = 0;
-        game = new Game(this);
+        game = new Game();
     }
 
     @Override
