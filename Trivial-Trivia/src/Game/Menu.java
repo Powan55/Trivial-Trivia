@@ -8,6 +8,7 @@ public class Menu
 {
     private Action action;
     private Scanner scan;
+    private boolean isTrue;
 
 
     /**
@@ -20,40 +21,45 @@ public class Menu
     public void menu()
     {
         int userInput = 0;
+        isTrue = true;
         scan = new Scanner(System.in);
 
 
-        System.out.println("Welcome To Trivial Trivia\n" +
-                "Please select the user type.\n" +
-                "1. Login\n2. Continue as guest\n3. Create a new account");
-        userInput = scan.nextInt();
+        System.out.println("Welcome To Trivial Trivia");
 
-        switch (userInput) {
-            case 1:{
-                action = new LoginAction();
-                action.execute();
-                menu2();
-                break;
-            }
-            case 2: {
-                action = new GuestAction();
-                action.execute();
-                menu2();
-                break;
-            }
-            case 3:{
-                action = new CreateAccountAction();
-                action.execute();
-                menu2();
-                break;
-            }
-            case 4:{
-                System.out.println("Thanks for playing");
-                break;
-            }
-            default:{
-                System.out.println("Please select a valid option");
-                break;
+        while (isTrue){
+            System.out.println("Please select the user type.\n" +
+                    "1. Login\n2. Continue as guest\n3. Create a new account");
+            userInput = scan.nextInt();
+
+            switch (userInput) {
+                case 1: {
+                    action = new LoginAction();
+                    action.execute();
+                    menu2();
+                    break;
+                }
+                case 2: {
+                    action = new GuestAction();
+                    action.execute();
+                    menu2();
+                    break;
+                }
+                case 3: {
+                    action = new CreateAccountAction();
+                    action.execute();
+                    menu2();
+                    break;
+                }
+                case 4: {
+                    System.out.println("Thanks for playing");
+                    isTrue = false;
+                    break;
+                }
+                default: {
+                    System.out.println("Please select a valid option");
+                    break;
+                }
             }
 
 
@@ -63,7 +69,7 @@ public class Menu
     {
         scan = new Scanner(System.in);
         int userInput = 0;
-        while (userInput != 5){
+        while (userInput != 5 && isTrue){
             System.out.println("Please one of the following options:\n" +
                     "1. Play\n2. View Stat\n5. Exit");
             userInput = scan.nextInt();
@@ -84,6 +90,7 @@ public class Menu
                 case 5: {
                     System.out.println("Exiting the Game.");
                     System.out.println("Game Summery");
+                    isTrue = false;
                     //TODO Add the necessary code to display a game summery for user once they chose to exit.
                     break;
                 }
