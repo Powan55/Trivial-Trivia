@@ -10,6 +10,11 @@ public class LoginAction implements Action{
     {
         User user = ProxyUser.getInstance();
         Login login = new Login();
-        user.setAuthenticated(login.authenticate());
+        if(login.authenticate()) {
+            user.setAuthenticated(true);
+        }
+        else {
+            System.out.println("Due to multiple failed login attempts,\nthe game will continue as a guest user.");
+        }
     }
 }
