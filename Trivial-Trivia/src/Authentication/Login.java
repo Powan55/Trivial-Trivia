@@ -19,13 +19,16 @@ public class Login
             System.out.print("Enter your password: ");
             String password = scan.nextLine();
 
-            for (String[] str : data) {
 
-                if (str[1].equals(username) && str[2].equals(password)) {
+        for (String[] str: data) {
+            if(str[1].equals(username)){
+                String hashedPassword = PasswordHashing.hashPassword(password, str[3]);
+                if( str[2].equals(hashedPassword)) {
                     System.out.println("You have been logged in successfully.");
                     return true;
                 }
             }
+
             System.out.println("ERROR: Incorrect username or password");
             System.out.println(3-i + " attempt remaining!!");
         }

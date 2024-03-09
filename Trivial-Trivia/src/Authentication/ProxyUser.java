@@ -82,6 +82,13 @@ public class ProxyUser implements User{
     }
 
     @Override
+    public String getSalt() {
+        return new String();
+    }
+
+    @Override
+    public void setSalt(String salt) {
+
     public int getRight() {
         return user.getRight();
     }

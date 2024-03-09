@@ -14,7 +14,7 @@ public class CreateAccountAction implements Action{
         Scanner scan = new Scanner(System.in);
         CreateUser createUser = new CreateUser();
 
-        String[] info = new String[3];
+        String[] info = new String[4];
 
         System.out.println("Enter your name: ");
         info[0] = scan.nextLine();

@@ -22,14 +22,27 @@ public class CreateUser {
     public boolean makeUser(String[] info){
         ArrayList<String[]> userInfo = data.readFile("Trivial-Trivia/src/Data/userData.csv"); // Load existing user data
 
-        if(isUniqueUser(info[1], userInfo)){ // Check username uniqueness based on index 1
-            userInfo.add(info);
-            user = new RealUser(info[0], info[1], info[2]);
-            data.writeFile("Trivial-Trivia/src/Data/userData.csv", userInfo); // Save updated user data
-            return true;
-        }else{
+
+   if(isUniqueUser(info[1], userInfo)){
+        //create a salt and hash
+        String salt = PasswordHashing.generateSalt();
+        String hash = PasswordHashing.hashPassword(info[2], salt);
+
+
+        user = new RealUser(info[0], info[1], hash);
+        user.setSalt(salt);
+        //add salt and hash to user
+        //write it to user
+        info[2] = hash;
+        info[3] = salt;
+        userInfo.add(info);
+
+        data.writeFile("Trivial-Trivia/src/Data/userData.csv", userInfo);
+        return true;
+      }else{
             return false;
-        }
+      }
+       
     }
 
     public boolean isUniqueUser(String username, ArrayList<String[]> userInfo){
@@ -39,5 +52,6 @@ public class CreateUser {
             }
         }
         return true; // Username is unique
+
     }
 }
