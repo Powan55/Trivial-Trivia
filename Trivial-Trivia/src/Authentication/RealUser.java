@@ -7,6 +7,8 @@ public class RealUser implements User
     private String name;
     private String userName;
     private String password;
+
+    private String salt;
     private int score;
     private Game game;
 
@@ -68,6 +70,14 @@ public class RealUser implements User
 
     public void setScore(int score) {
         this.score = score;
+    }
+
+    public String getSalt() {
+        return salt;
+    }
+
+    public void setSalt(String salt) {
+        this.salt = salt;
     }
 
     @Override

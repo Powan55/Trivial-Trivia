@@ -10,7 +10,7 @@ public class Login
     public boolean authenticate()
     {
         Database database = new CSVAdapter();
-        ArrayList<String[]> data = database.readFile("Trivial-Trivia/src/Data/loginData.txt");
+        ArrayList<String[]> data = database.readFile("Trivial-Trivia/src/Data/userData.csv");
 
         Scanner scan = new Scanner(System.in);
         System.out.print("Enter your username: ");
@@ -18,10 +18,15 @@ public class Login
         System.out.print("Enter your password: ");
         String password = scan.nextLine();
 
+
+
         for (String[] str: data) {
-            if(str[1].equals(username) && str[2].equals(password)){
-                System.out.println("You have been logged in successfully.");
-                return true;
+            if(str[1].equals(username)){
+                String hashedPassword = PasswordHashing.hashPassword(password, str[3]);
+                if( str[2].equals(hashedPassword)) {
+                    System.out.println("You have been logged in successfully.");
+                    return true;
+                }
             }
 
         }

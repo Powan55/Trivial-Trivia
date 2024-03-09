@@ -11,6 +11,7 @@ public interface User
     public int getScore();
     public void setScore(int score);
     public void setAuthenticated(boolean authentication);
-
+    public String getSalt();
+    public void setSalt(String salt);
 
 }

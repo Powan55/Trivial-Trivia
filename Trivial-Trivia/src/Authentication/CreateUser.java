@@ -22,8 +22,19 @@ public class CreateUser {
     public boolean makeUser(String[] info){
         ArrayList<String[]> userInfo = new ArrayList<>();
 
+        //create a salt and hash
+        String salt = PasswordHashing.generateSalt();
+        String hash = PasswordHashing.hashPassword(info[2], salt);
+
+
+        user = new RealUser(info[0], info[1], hash);
+        user.setSalt(salt);
+        //add salt and hash to user
+        //write it to user
+        info[2] = hash;
+        info[3] = salt;
         userInfo.add(info);
-        user = new RealUser(info[0], info[1], info[2]);
+
         data.writeFile("Trivial-Trivia/src/Data/userData.csv", userInfo);
        return true;
     }

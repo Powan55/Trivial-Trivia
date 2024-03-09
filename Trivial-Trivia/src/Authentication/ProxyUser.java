@@ -73,6 +73,16 @@ public class ProxyUser implements User{
         isAuthenticated = authentication;
     }
 
+    @Override
+    public String getSalt() {
+        return new String();
+    }
+
+    @Override
+    public void setSalt(String salt) {
+
+    }
+
     public boolean getIsAuthenticated() {
         return isAuthenticated;
     }
