@@ -20,8 +20,10 @@ public class CreateUser {
     }
 
     public boolean makeUser(String[] info){
-        ArrayList<String[]> userInfo = new ArrayList<>();
+        ArrayList<String[]> userInfo = data.readFile("Trivial-Trivia/src/Data/userData.csv"); // Load existing user data
 
+
+   if(isUniqueUser(info[1], userInfo)){
         //create a salt and hash
         String salt = PasswordHashing.generateSalt();
         String hash = PasswordHashing.hashPassword(info[2], salt);
@@ -36,6 +38,20 @@ public class CreateUser {
         userInfo.add(info);
 
         data.writeFile("Trivial-Trivia/src/Data/userData.csv", userInfo);
-       return true;
+        return true;
+      }else{
+            return false;
+      }
+       
+    }
+
+    public boolean isUniqueUser(String username, ArrayList<String[]> userInfo){
+        for(String[] userData: userInfo){
+            if(userData[1].equals(username)){ // Check username based on index 1
+                return false; // Username is not unique
+            }
+        }
+        return true; // Username is unique
+
     }
 }

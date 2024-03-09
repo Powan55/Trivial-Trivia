@@ -5,13 +5,21 @@ package Authentication;
  */
 public class ProxyUser implements User{
 
+    private static ProxyUser instance;
     private boolean isAuthenticated;
-    private User user;
+    private static User user;
 
-    public ProxyUser()
+    private ProxyUser()
     {
         isAuthenticated = false;
-        user = new RealUser();
+    }
+
+    public static User getInstance() {
+        if (instance == null) {
+            instance = new ProxyUser();
+            user = new RealUser();
+        }
+        return instance;
     }
 
 
@@ -81,6 +89,23 @@ public class ProxyUser implements User{
     @Override
     public void setSalt(String salt) {
 
+    public int getRight() {
+        return user.getRight();
+    }
+
+    @Override
+    public void setRight(int right) {
+        user.setRight((right));
+    }
+
+    @Override
+    public int getWrong() {
+        return user.getWrong();
+    }
+
+    @Override
+    public void setWrong(int wrong) {
+        user.setWrong(wrong);
     }
 
     public boolean getIsAuthenticated() {

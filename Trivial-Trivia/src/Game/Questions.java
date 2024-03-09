@@ -1,6 +1,7 @@
 package Game;
 
 import Database.Database;
+import Database.CSVAdapter;
 
 import java.util.ArrayList;
 
@@ -9,20 +10,22 @@ public class Questions
     private ArrayList<String[]> question;
     private String fileName;
 
-    private Database file;
+    private final Database file;
 
     public Questions()
     {
+        file = new CSVAdapter();
         question = new ArrayList<>();
-        fileName = "Data/questions.csv";
+        fileName = "Trivial-Trivia/src/Data/QuestionData.csv";
     }
 
-    public ArrayList<String[]> getQuestion()
+    public ArrayList<Question> getQuestion()
     {
-        //TODO need to format the questions into 2D array with question, answer, and option format
+        ArrayList<Question> questions = new ArrayList<>();
         question = file.readFile(fileName);
-
-        return null;
+        for (String[] data: question.subList(1, question.size())) {
+            questions.add(new Question(data[0], data[1], data[2], data[3], data[4], data[5]));
+        }
+        return questions;
     }
-
 }

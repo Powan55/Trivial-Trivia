@@ -1,6 +1,6 @@
 package Game;
 
-import Authentication.User;
+import Authentication.ProxyUser;
 
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -8,37 +8,33 @@ import java.util.Scanner;
 
 public class Game
 {
-    private Questions question;
-    private ArrayList<String[]> queList;
+    private Questions questions;
+    private ArrayList<Question> queList;
     private Scanner scan;
     private ScoreTracker score;
 
-    public Game(User user)
+    public Game()
     {
-        question = new Questions();
+        questions = new Questions();
         queList = new ArrayList<>();
         scan = new Scanner(System.in);
-        score = new ScoreTracker(user);
+        score = new ScoreTracker(ProxyUser.getInstance());
     }
     public void play()
     {
-        //add code
-        int count = 0;
         int userInput;
-        queList = question.getQuestion();
-        for (String data[]: queList.subList(1, queList.size())) {
-            count++;
-            for (int i = 0; i < data.length-1; i++) {
-                if(i == 0)
-                    System.out.print(count + ". ");
-                else
-                    System.out.print(i + ". ");
-                System.out.println(data);
-            }
-            userInput = scan.nextInt();
-            score.ansChecker(data[userInput], data[data.length-1]);
-        }
+        queList = questions.getQuestion();
 
+        for (Question question : queList) {
+            System.out.println(question.toString());
+            userInput = scan.nextInt();
+            System.out.println();
+            if(userInput == 5) {
+                break;
+            }
+            score.ansChecker(question.getOption(userInput), question.getAnswer());
+
+        }
     }
 
     public void addQuestion(String data[])

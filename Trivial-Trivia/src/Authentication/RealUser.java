@@ -10,12 +10,17 @@ public class RealUser implements User
 
     private String salt;
     private int score;
+
+    private int wrong;
+    private int right;
     private Game game;
 
     public RealUser()
     {
+        wrong = 0;
+        right = 0;
         score = 0;
-        game = new Game(this);
+        game = new Game();
     }
 
     public RealUser(String name, String userName, String password)
@@ -24,7 +29,9 @@ public class RealUser implements User
         this.userName = userName;
         this.password = password;
         score = 0;
-        game = new Game(this);
+        wrong = 0;
+        right = 0;
+        game = new Game();
     }
 
     @Override
@@ -83,6 +90,26 @@ public class RealUser implements User
     @Override
     public void setAuthenticated(boolean authentication) {
         //code
+    }
+
+    @Override
+    public int getRight() {
+        return right;
+    }
+
+    @Override
+    public void setRight(int right) {
+        this.right = right;
+    }
+
+    @Override
+    public int getWrong() {
+        return wrong;
+    }
+
+    @Override
+    public void setWrong(int wrong) {
+        this.wrong = wrong;
     }
 
 }
