@@ -33,6 +33,7 @@ public class Game
                 break;
             }
             score.ansChecker(question.getOption(userInput), question.getAnswer());
+
         }
     }
 

@@ -88,10 +88,11 @@ public class Menu
                     break;
                 }
                 case 5: {
-                    System.out.println("Exiting the Game.");
+                    System.out.println("\nExiting the Game.");
                     System.out.println("Game Summery");
-                    isTrue = false;
-                    //TODO Add the necessary code to display a game summery for user once they chose to exit.
+                    action = new SummaryAction();
+                    action.execute();
+                    System.out.println("\n");
                     break;
                 }
                 default:{

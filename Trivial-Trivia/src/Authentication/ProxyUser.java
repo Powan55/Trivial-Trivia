@@ -81,6 +81,26 @@ public class ProxyUser implements User{
         isAuthenticated = authentication;
     }
 
+    @Override
+    public int getRight() {
+        return user.getRight();
+    }
+
+    @Override
+    public void setRight(int right) {
+        user.setRight((right));
+    }
+
+    @Override
+    public int getWrong() {
+        return user.getWrong();
+    }
+
+    @Override
+    public void setWrong(int wrong) {
+        user.setWrong(wrong);
+    }
+
     public boolean getIsAuthenticated() {
         return isAuthenticated;
     }
