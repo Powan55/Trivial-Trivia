@@ -90,7 +90,7 @@ public class Menu
                 case 5: {
                     System.out.println("\nExiting the Game.");
                     System.out.println("Game Summery");
-                    action = new SummaryAction();
+                    action = new   ViewStatAction();
                     action.execute();
                     System.out.println("\n");
                     break;
