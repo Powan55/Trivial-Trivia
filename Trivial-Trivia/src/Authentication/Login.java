@@ -26,10 +26,9 @@ public class Login {
                         return true;
                     }
                 }
-
-                System.out.println("ERROR: Incorrect username or password");
-                System.out.println(3 - i + " attempt remaining!!");
             }
+            System.out.println("ERROR: Incorrect username or password");
+            System.out.println(3 - i + " attempt remaining!!");
         }
         return false;
     }
