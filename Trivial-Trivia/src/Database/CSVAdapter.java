@@ -36,7 +36,8 @@ public class CSVAdapter implements Database{
             CSVWriter writer = new CSVWriter(new FileWriter(fileName, false));
             for (String[] row : data) {
                 for (int i = 0; i < row.length; i++) {
-                    row[i] = row[i].replace("\"", "");
+                    if(row[i] !=null)
+                        row[i] = row[i].replace("\"", "");
                 }
                 writer.writeNext(row);
             }

@@ -37,8 +37,9 @@ public class ProxyUser implements User{
     }
 
     @Override
-    public void saveScore(int score) {
-
+    public void saveScore() {
+        if(isAuthenticated)
+            user.saveScore();
     }
 
     @Override

@@ -4,7 +4,7 @@ public interface User
 {
     public void play();
     public String getUserInfo();
-    public void saveScore(int score);
+    public void saveScore();
     public void importData(String fileName);
     public void exportData(String fileName);
     public void addQuestions(String data[]);
