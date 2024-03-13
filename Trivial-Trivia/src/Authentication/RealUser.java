@@ -1,6 +1,9 @@
 package Authentication;
 
+import Database.*;
 import Game.Game;
+
+import java.util.ArrayList;
 
 public class RealUser implements User
 {
@@ -52,8 +55,12 @@ public class RealUser implements User
     }
 
     @Override
-    public void saveScore(int score) {
-
+    public void saveScore() {
+        Database database = new CSVAdapter();
+        ArrayList<String[]> data = database.readFile("Trivial-Trivia/src/Data/StatData.csv");
+        String[] info = {userName, (String.valueOf(score))};
+        data.add(info);
+        database.writeFile("Trivial-Trivia/src/Data/StatData.csv", data);
     }
 
     @Override

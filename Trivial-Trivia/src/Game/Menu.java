@@ -84,15 +84,12 @@ public class Menu
                     System.out.println();
                     action = new ViewStatAction();
                     action.execute();
-                    System.out.println("\n");
                     break;
                 }
                 case 5: {
                     System.out.println("\nExiting the Game.");
-                    System.out.println("Game Summery");
                     action = new   ViewStatAction();
                     action.execute();
-                    System.out.println("\n");
                     break;
                 }
                 default:{
