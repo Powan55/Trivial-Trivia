@@ -12,9 +12,11 @@ public class LoginAction implements Action{
         Login login = new Login();
         if(login.authenticate()) {
             user.setAuthenticated(true);
+            System.out.print("Login successful!");
         }
         else {
             System.out.println("Due to multiple failed login attempts,\nthe game will continue as a guest user.");
+            user.setAuthenticated(false);
         }
     }
 }

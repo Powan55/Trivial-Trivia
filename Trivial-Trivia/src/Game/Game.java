@@ -20,20 +20,21 @@ public class Game
         scan = new Scanner(System.in);
         score = new ScoreTracker(ProxyUser.getInstance());
     }
-    public void play()
-    {
-        int userInput;
+    public void play() {
         queList = questions.getQuestion();
 
         for (Question question : queList) {
             System.out.println(question.toString());
-            userInput = scan.nextInt();
+            while (!scan.hasNextInt()) {
+                System.out.println("Invalid input! Please enter a number.");
+                scan.next();
+            }
+            int userInput = scan.nextInt();
             System.out.println();
-            if(userInput == 5) {
+            if (userInput == 5) {
                 break;
             }
             score.ansChecker(question.getOption(userInput), question.getAnswer());
-
         }
     }
 

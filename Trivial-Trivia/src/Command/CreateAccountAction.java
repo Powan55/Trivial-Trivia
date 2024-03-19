@@ -29,6 +29,7 @@ public class CreateAccountAction implements Action{
 
         if(isSuccessful){
             System.out.println("Account has been created successfully.\n");
+
         }
         else {
             System.out.println("Creating account was unsuccessful!!\nPlease try again.\n");

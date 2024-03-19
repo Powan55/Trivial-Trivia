@@ -26,6 +26,7 @@ public class ProxyUser implements User{
     @Override
     public void play() {
         user.play();
+        System.out.println("is authenticated: " + isAuthenticated);
     }
 
     @Override

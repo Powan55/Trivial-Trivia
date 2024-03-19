@@ -18,20 +18,21 @@ public class Menu
      * After executing the selected action, it calls the `menu2()` method to display the next menu or
      * terminates the game if the user chooses to exit.
      */
-    public void menu()
-    {
+    public void menu() {
         int userInput = 0;
         isTrue = true;
         scan = new Scanner(System.in);
 
-
         System.out.println("Welcome To Trivial Trivia");
 
-        while (isTrue){
+        while (isTrue) {
             System.out.println("Please select the user type.\n" +
-                    "1. Login\n2. Continue as guest\n3. Create a new account");
+                    "1. Login\n2. Continue as guest\n3. Create a new account\n4. Exit");
+            while (!scan.hasNextInt()) {
+                System.out.println("Invalid input! Please enter a number.");
+                scan.next();
+            }
             userInput = scan.nextInt();
-
             switch (userInput) {
                 case 1: {
                     action = new LoginAction();
@@ -65,13 +66,15 @@ public class Menu
 
         }
     }
-    private void menu2()
-    {
-        scan = new Scanner(System.in);
+    private void menu2() {
         int userInput = 0;
-        while (userInput != 5 && isTrue){
-            System.out.println("Please one of the following options:\n" +
+        while (userInput != 5 && isTrue) {
+            System.out.println("Please Select one of the following options:\n" +
                     "1. Play\n2. View Stat\n5. Exit");
+            while (!scan.hasNextInt()) {
+                System.out.println("Invalid input! Please enter a number.");
+                scan.next();
+            }
             userInput = scan.nextInt();
 
             switch (userInput) {
