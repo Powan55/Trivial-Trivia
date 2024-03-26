@@ -1,0 +1,14 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="Trival-Trivia:war">
+    <output-path>$PROJECT_DIR$/target</output-path>
+    <properties id="maven-jee-properties">
+      <options>
+        <module>Trival-Trivia</module>
+        <packaging>war</packaging>
+      </options>
+    </properties>
+    <root id="archive" name="Trival-Trivia-1.0-SNAPSHOT.war">
+      <element id="artifact" artifact-name="Trival-Trivia:war exploded" />
+    </root>
+  </artifact>
+</component>

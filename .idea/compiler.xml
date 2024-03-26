@@ -9,8 +9,5 @@
         <module name="Trival-Trivia" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="Trival-Trivia" target="17" />
-    </bytecodeTargetLevel>
   </component>
 </project>
