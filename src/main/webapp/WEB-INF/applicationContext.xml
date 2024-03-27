@@ -7,16 +7,5 @@
         http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
         http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd">
 
-    <!-- Component scanning to automatically detect Spring components -->
-    <context:component-scan base-package="Controller"/>
-
-    <!-- Enable Spring MVC -->
-    <mvc:annotation-driven/>
-
-    <!-- View resolver configuration -->
-    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
-        <property name="prefix" value="/WEB-INF/views/"/>
-        <property name="suffix" value=".jsp"/>
-    </bean>
 
 </beans>
