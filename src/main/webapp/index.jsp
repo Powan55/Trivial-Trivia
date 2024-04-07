@@ -51,5 +51,9 @@
   <p>Exciting Trivia coming soon...</p>
   <a href="https://github.com/Powan55/Trivial-Trivia">View Trivial-Trivia on GitHub</a>
 </div>
+<ul>
+  <li><a href="/menu">View Menu</a></li>
+</ul>
+
 </body>
 </html>
