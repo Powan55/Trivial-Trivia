@@ -49,7 +49,8 @@
   <h1>Welcome to Trivial-Trivia</h1>
   <p>Get ready  for a trivia adventure!</p>
   <p>Exciting Trivia coming soon...</p>
-  <a href="https://github.com/Powan55/Trivial-Trivia">View Trivial-Trivia on GitHub</a>
+  <a href="https://github.com/Powan55/Trivial-Trivia">View GitHub Page</a>
 </div>
+
 </body>
 </html>
