@@ -1,0 +1,65 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f0f0f0; /* Light gray background for the whole page */
+    color: #333;
+}
+
+.login-container {
+    max-width: 400px;
+    margin: 10% auto;
+    padding: 40px;
+    background-color: skyblue; /* Sky blue for the login box */
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Slightly stronger shadow for contrast */
+    color: #fff; /* White text for readability on sky blue */
+}
+
+h2 {
+    margin-bottom: 20px;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.input-group input[type="text"],
+.input-group input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd; /* Lighter border for less contrast */
+    border-radius: 5px;
+    background-color: #ffffff; /* White background for the input fields */
+    color: #333; /* Dark text for contrast */
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1); /* Subtle inset shadow for depth */
+}
+
+.btn {
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff; /* A vibrant button color that stands out */
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.btn:hover {
+    background-color: #0056b3; /* A darker shade for the button on hover */
+}
+
+.options a {
+    color: #fff; /* Links match the text for consistency */
+    text-decoration: none;
+}
+
+.options a:hover {
+    text-decoration: underline;
+}
