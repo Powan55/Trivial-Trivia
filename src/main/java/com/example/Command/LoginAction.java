@@ -2,7 +2,6 @@ package com.example.Command;
 
 import com.example.Authentication.Login;
 import com.example.Authentication.User;
-import com.example.Controller.MenuController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
@@ -10,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -66,12 +66,15 @@ public class LoginAction implements Action {
     public String loginServlet(@RequestParam("username") String username,
                                @RequestParam("password") String password) {
 
-        MenuController menu;
         Login login = new Login();
         if (login.authenticate(username, password)) {
+            logger.log(Level.INFO, "Logged in successfully");
             user.setAuthenticated(true);
             return "redirect:/menu";
         }
+
+        logger.log(Level.INFO, "Log in failed!!");
+
         return "redirect:/loginMenu";
     }
 }
