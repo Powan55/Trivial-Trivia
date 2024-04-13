@@ -1,1 +1,1 @@
-# Trival-Trivia
+# Trivial-Trivia
