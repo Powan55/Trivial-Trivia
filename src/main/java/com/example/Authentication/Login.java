@@ -43,19 +43,19 @@ public class Login {
     }
 
     public boolean authenticate(String username, String password) {
-        Database database = new CSVAdapter();
-        ArrayList<String[]> data = database.readFile("src/main/resources/Data/userData.csv");
-
-
-        for (String[] str : data) {
-            if (str[1].equals(username)) {
-                String hashedPassword = PasswordHashing.hashPassword(password, str[3]);
-                if (str[2].equals(hashedPassword)) {
-                    logger.log(Level.INFO, "You have been logged in successfully.");
-                    return true;
-                }
-            }
-        }
+//        Database database = new CSVAdapter();
+//        ArrayList<String[]> data = database.readFile("src/main/resources/Data/userData.csv");
+//
+//
+//        for (String[] str : data) {
+//            if (str[1].equals(username)) {
+//                String hashedPassword = PasswordHashing.hashPassword(password, str[3]);
+//                if (str[2].equals(hashedPassword)) {
+//                    logger.log(Level.INFO, "You have been logged in successfully.");
+//                    return true;
+//                }
+//            }
+//        }
         logger.log(Level.INFO, "ERROR: Incorrect username or password");
 
         return false;
