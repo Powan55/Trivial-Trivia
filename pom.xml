@@ -66,13 +66,19 @@
             <artifactId>spring-webmvc</artifactId>
             <version>6.1.5</version>
         </dependency>
+
         <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-core</artifactId>
+            <version>10.1.17</version>
+            <scope>compile</scope>
+        </dependency>
+       <!-- <dependency>
             <groupId>org.apache.tomcat.embed</groupId>
             <artifactId>tomcat-embed-jasper</artifactId>
             <version>10.1.17</version>
             <scope>provided</scope>
-
-        </dependency>
+        </dependency>-->
 
         <dependency>
             <groupId>jakarta.servlet</groupId>
