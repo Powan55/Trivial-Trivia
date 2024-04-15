@@ -47,7 +47,7 @@
 <div class="container">
   <img src="images/Trivial-Trivia.jpg" alt="Trivial-Trivia Logo" class="logo">
   <h1>Welcome to Trivial-Trivia</h1>
-  <p>Get ready  for a trivia adventure!</p>
+  <p>Get ready  for a trivia adventure!!!</p>
   <p>Exciting Trivia coming soon...</p>
   <a href="https://github.com/Powan55/Trivial-Trivia">View Trivial-Trivia on GitHub</a>
 </div>
