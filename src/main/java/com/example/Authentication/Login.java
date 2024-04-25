@@ -2,6 +2,8 @@ package com.example.Authentication;
 
 import com.example.Database.CSVAdapter;
 import com.example.Database.Database;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -15,9 +17,14 @@ public class Login {
 
     private static final Logger logger = Logger.getLogger(Login.class.getName());
 
+    @Autowired
+    private Database database;
+    @Autowired
+    private ResourceLoader resourceLoader;
+
     public boolean authenticate() {
-        Database database = new CSVAdapter();
-        ArrayList<String[]> data = database.readFile("src/main/resources/Data/userData.csv");
+        database = new CSVAdapter();
+        ArrayList<String[]> data = database.readFile("userData.csv");
 
         for (int i = 0; i < 4 ; i++) {
             Scanner scan = new Scanner(System.in);
@@ -43,8 +50,8 @@ public class Login {
     }
 
     public boolean authenticate(String username, String password) {
-        Database database = new CSVAdapter();
-        ArrayList<String[]> data = database.readFile("src/main/resources/Data/userData.csv");
+        database = new CSVAdapter();
+        ArrayList<String[]> data = database.readFile("userData.csv");
 
 
         for (String[] str : data) {

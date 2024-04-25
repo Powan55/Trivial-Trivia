@@ -21,6 +21,8 @@ public class RealUser implements User
     private int right;
     private Game game;
 
+
+
     public RealUser()
     {
         wrong = 0;

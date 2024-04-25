@@ -13,4 +13,5 @@ public class XMLAdapter implements Database{
     public void writeFile(String fileName, ArrayList<String[]> data) {
 
     }
+
 }

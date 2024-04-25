@@ -2,6 +2,7 @@ package com.example.Authentication;
 
 import com.example.Database.CSVAdapter;
 import com.example.Database.Database;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -14,15 +15,18 @@ import java.util.ArrayList;
 @Component
 public class CreateUser {
     private User user;
-    private Database data;
+
+    @Autowired
+    private Database database;
+
 
     public CreateUser(){
         user = null;
-        data = new CSVAdapter();
+        database = new CSVAdapter();
     }
 
     public boolean makeUser(String[] info){
-        ArrayList<String[]> userInfo = data.readFile("Trivial-Trivia/src/Data/userData.csv"); // Load existing user data
+        ArrayList<String[]> userInfo = database.readFile("Trivial-Trivia/src/Data/userData.csv"); // Load existing user data
 
 
    if(isUniqueUser(info[1], userInfo)){
@@ -39,7 +43,7 @@ public class CreateUser {
         info[3] = salt;
         userInfo.add(info);
 
-        data.writeFile("Trivial-Trivia/src/Data/userData.csv", userInfo);
+       database.writeFile("Trivial-Trivia/src/Data/userData.csv", userInfo);
         return true;
       }else{
             return false;
