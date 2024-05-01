@@ -7,21 +7,21 @@
 --%>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Game Menu</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Menu</title>
     <link rel="stylesheet" type="text/css" href="css/menu.css">
 </head>
 <body>
-<div class="container">
-    <h1>Game Menu</h1>
-    <form action="/menu" method="post">
-        <label><input type="radio" name="userInput" value="1"> Play</label><br>
-        <label><input type="radio" name="userInput" value="2"> View Stat</label><br>
-        <label><input type="radio" name="userInput" value="5"> Exit</label><br><br>
-        <input type="submit" value="Submit">
-    </form>
+<div class="menu-container">
+    <h1>Main Menu</h1>
+    <ul class="menu-list">
+        <li><a href="play.jsp">Play</a></li>
+        <li><a href="viewStat.jsp">View Stat</a></li>
+        <li><a href="#">Exit</a></li>
+    </ul>
 </div>
 </body>
 </html>
