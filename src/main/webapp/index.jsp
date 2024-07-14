@@ -15,7 +15,7 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
+      background-color: #f0f8ff;
       margin: 0;
       padding: 0;
       display: flex;
@@ -45,7 +45,7 @@
 </head>
 <body>
 <div class="container">
-  <img src="images/Trivial-Trivia.jpg" alt="Trivial-Trivia Logo" class="logo">
+  <img src="${pageContext.request.contextPath}/images/Trivial-Trivia.jpg" alt="Trivial-Trivia Logo" class="logo">
   <h1>Welcome to Trivial-Trivia</h1>
   <p>Get ready  for a trivia adventure!</p>
   <p>Exciting Trivia coming soon...</p>
