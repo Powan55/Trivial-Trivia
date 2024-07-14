@@ -1,11 +1,12 @@
 package com.example.Command;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
 import com.example.Authentication.User;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
 
-@Component
+
+@Controller
 public class PlayAction implements Action {
 
     private final User user;
@@ -19,4 +20,10 @@ public class PlayAction implements Action {
     public void execute() {
         user.play();
     }
+
+    @GetMapping("/play") // Mapping the HTTP GET request to the execute method
+    public String playGame() {
+        return "play";
+    }
+
 }
