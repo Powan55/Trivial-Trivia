@@ -1,11 +1,14 @@
 package com.example.Game;
 
 public class Question {
+    private Long id;
     private String question;
     private String answer;
     private String option1, option2, option3, option4;
 
-    public Question(String question, String option1, String option2, String option3, String option4, String answer) {
+    // Constructor
+    public Question(Long id, String question, String option1, String option2, String option3, String option4, String answer) {
+        this.id = id;
         this.question = question;
         this.option1 = option1;
         this.option2 = option2;
@@ -14,19 +17,15 @@ public class Question {
         this.answer = answer;
     }
 
-    public String getOption(int index){
-        switch (index){
-            case 1:
-                return option1;
-            case 2:
-                return option2;
-            case 3:
-                return option3;
-            case 4:
-                return option4;
-        }
-        return "";
+    // Getters and Setters
+    public Long getId() {
+        return id;
     }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public String getQuestion() {
         return question;
     }
@@ -75,11 +74,24 @@ public class Question {
         this.option4 = option4;
     }
 
+    public String getOption(int index){
+        switch (index){
+            case 1:
+                return option1;
+            case 2:
+                return option2;
+            case 3:
+                return option3;
+            case 4:
+                return option4;
+        }
+        return "";
+    }
+
     @Override
     public String toString() {
-        String data =String.format(
+        return String.format(
                 "%s\n1) %-15s 2) %-15s\n3) %-15s 4) %-15s",
                 question, option1, option2, option3, option4);
-        return data;
     }
 }

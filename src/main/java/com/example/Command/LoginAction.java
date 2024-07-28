@@ -3,7 +3,6 @@ package com.example.Command;
 import com.example.Authentication.Login;
 import com.example.Authentication.User;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,7 +15,6 @@ import java.util.logging.Logger;
  * The LoginAction class represents the controller responsible for handling login-related requests.
  * It implements the Action interface to define the execution of login actions.
  */
-@Component
 @Controller
 public class LoginAction implements Action {
 
