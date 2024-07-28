@@ -29,9 +29,9 @@ public class Questions
     {
         ArrayList<Question> questions = new ArrayList<>();
         question = database.readFile(fileName);
-        for (String[] data: question.subList(1, question.size())) {
-            questions.add(new Question(data[0], data[1], data[2], data[3], data[4], data[5]));
-        }
+//        for (String[] data: question.subList(1, question.size())) {
+//            questions.add(new Question(data[0], data[1], data[2], data[3], data[4], data[5]));
+//        }
         return questions;
     }
 }

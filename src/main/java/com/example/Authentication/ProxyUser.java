@@ -14,7 +14,7 @@ public class ProxyUser implements User{
     private boolean isAuthenticated;
     private static User user;
 
-    private ProxyUser()
+    public ProxyUser()
     {
         isAuthenticated = false;
     }

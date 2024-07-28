@@ -71,20 +71,20 @@ public class Menu {
             userInput = scan.nextInt();
 
             switch (userInput) {
-                case 1: {
-                    playAction.execute();
-                    break;
-                }
+//                case 1: {
+//                    playAction.execute();
+//                    break;
+//                }
                 case 2: {
                     System.out.println();
                     viewStatAction.execute();
                     break;
                 }
-                case 5: {
-                    System.out.println("\nExiting the Game.");
-                    playAction.execute();
-                    break;
-                }
+//                case 5: {
+//                    System.out.println("\nExiting the Game.");
+//                    playAction.execute();
+//                    break;
+//                }
                 default: {
                     System.out.println("Invalid option!!\nPlease select a valid option.");
                     break;
