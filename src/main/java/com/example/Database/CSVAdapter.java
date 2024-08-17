@@ -31,7 +31,7 @@ public class CSVAdapter implements Database {
     public ArrayList<String[]> readFile(String fileName) {
         ArrayList<String[]> data = new ArrayList<>();
         try {
-            Resource resource = new ClassPathResource("Data/" + fileName);
+            Resource resource = new ClassPathResource(fileName);
             if (resource.exists()) {
                 try (InputStream is = resource.getInputStream();
                      CSVReader reader = new CSVReader(new InputStreamReader(is))) {
