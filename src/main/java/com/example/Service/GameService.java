@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * Service class for managing the game logic.
@@ -17,11 +18,12 @@ import java.util.List;
 public class GameService {
 
     private List<Question> questions;
+    private Question currentQuestion;
     private int currentQuestionIndex;
     private int score;
 
     private final Questions queObj;
-
+    private static final Logger logger = Logger.getLogger(GameService.class.getName());
     /**
      * Constructor for GameService.
      *
@@ -33,6 +35,7 @@ public class GameService {
         this.questions = loadQuestions();
         this.currentQuestionIndex = 0;
         this.score = 0;
+        this.currentQuestion = null;
     }
 
     /**
@@ -61,9 +64,20 @@ public class GameService {
      */
     public Question getNextQuestion() {
         if (currentQuestionIndex < questions.size()) {
-            return questions.get(currentQuestionIndex++);
+            currentQuestion = questions.get(currentQuestionIndex);
+            currentQuestionIndex++;
+            return currentQuestion;
         }
         return null;
+    }
+
+    /**
+     * Returns the current question that is being tracked by this instance.
+     *
+     * @return the current {@link Question} object, or {@code null} if no question is set.
+     */
+    public Question getCurrentQuestion(){
+        return currentQuestion;
     }
 
     /**
@@ -75,7 +89,6 @@ public class GameService {
      */
     public void submitAnswer(User user, Question question, String answer) {
         if (question.getAnswer().equalsIgnoreCase(answer)) {
-
             score++;
         }
     }
