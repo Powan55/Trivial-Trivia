@@ -1,6 +1,7 @@
 package com.example.Command;
 
 import com.example.Authentication.ProxyUser;
+import com.example.Authentication.User;
 import com.example.Game.Question;
 import com.example.Service.GameService;
 import jakarta.servlet.http.HttpSession;
@@ -12,12 +13,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.logging.Logger;
+
 
 @Controller
 @RequestMapping("/play")
 public class PlayAction {
 
     private final GameService gameService;
+    private static final Logger logger = Logger.getLogger(PlayAction.class.getName());
+
 
     @Autowired
     public PlayAction(GameService gameService) {
@@ -56,7 +61,7 @@ public class PlayAction {
 //            // Handle the case where the user is not found in the session
 //            return "redirect:/login";
 //        }
-        Question currentQuestion = gameService.getNextQuestion(); // or another method to get the current question
+        Question currentQuestion = gameService.getCurrentQuestion(); //method to get the current question
         gameService.submitAnswer(new ProxyUser(), currentQuestion, answer);
         return "redirect:/play/question";
     }
@@ -68,9 +73,10 @@ public class PlayAction {
 //            // Handle the case where the user is not found in the session
 //            return "redirect:/login";
 //        }
-        int finalScore = gameService.getScore(new ProxyUser());
+        User user = new ProxyUser();
+        int finalScore = gameService.getScore(user);
         model.addAttribute("score", finalScore);
-        gameService.endGame(new ProxyUser());
+        gameService.endGame(user);
         return "endGamePage"; // This is the name of the JSP view to render the final score
     }
 }
