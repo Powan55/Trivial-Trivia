@@ -1,63 +1,52 @@
 package com.example.Authentication;
 
-import com.example.Database.CSVAdapter;
-import com.example.Database.Database;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 
+import com.example.Database.DataFiles;
+import com.example.Database.Database;
+import org.springframework.stereotype.Component;
+
 /**
- * The CreateUser class is responsible for creating a user and storing their
- * information in a CSV file.
+ * Creates a user and appends it to the stored users.
+ *
  * @author Laxmi Poudel
  */
 @Component
 public class CreateUser {
-    private User user;
 
-    @Autowired
-    private Database database;
+    private static final int USERNAME = 1;
+    private static final int COLUMNS = 4;
 
+    private final Database database;
 
-    public CreateUser(){
-        user = null;
-        database = new CSVAdapter();
+    public CreateUser(Database database) {
+        this.database = database;
     }
 
-    public boolean makeUser(String[] info){
-        ArrayList<String[]> userInfo = database.readFile("Trivial-Trivia/src/Data/userData.csv"); // Load existing user data
+    /**
+     * @param info name, username, password -- in that order
+     * @return false if the username is taken
+     */
+    public boolean makeUser(String[] info) {
+        ArrayList<String[]> users = database.readFile(DataFiles.USERS);
+        if (!isUniqueUser(info[1], users)) {
+            return false;
+        }
 
-
-   if(isUniqueUser(info[1], userInfo)){
-        //create a salt and hash
         String salt = PasswordHashing.generateSalt();
         String hash = PasswordHashing.hashPassword(info[2], salt);
 
-
-        user = new RealUser(info[0], info[1], hash);
-        user.setSalt(salt);
-        //add salt and hash to user
-        //write it to user
-        info[2] = hash;
-        info[3] = salt;
-        userInfo.add(info);
-
-       database.writeFile("Trivial-Trivia/src/Data/userData.csv", userInfo);
+        users.add(new String[] {info[0], info[1], hash, salt});
+        database.writeFile(DataFiles.USERS, users);
         return true;
-      }else{
-            return false;
-      }
-       
     }
 
-    public boolean isUniqueUser(String username, ArrayList<String[]> userInfo){
-        for(String[] userData: userInfo){
-            if(userData[1].equals(username)){ // Check username based on index 1
-                return false; // Username is not unique
+    public boolean isUniqueUser(String username, ArrayList<String[]> users) {
+        for (String[] row : users) {
+            if (row.length >= COLUMNS && row[USERNAME].equals(username)) {
+                return false;
             }
         }
-        return true; // Username is unique
-
+        return true;
     }
 }

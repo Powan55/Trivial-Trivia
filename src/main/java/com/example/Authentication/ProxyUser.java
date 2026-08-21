@@ -1,5 +1,6 @@
 package com.example.Authentication;
 
+import com.example.Database.Database;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -37,9 +38,9 @@ public class ProxyUser implements User{
     }
 
     @Override
-    public void saveScore() {
+    public void saveScore(Database database) {
         if(isAuthenticated)
-            user.saveScore();
+            user.saveScore(database);
     }
 
     @Override

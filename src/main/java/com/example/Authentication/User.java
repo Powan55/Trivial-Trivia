@@ -1,9 +1,11 @@
 package com.example.Authentication;
 
+import com.example.Database.Database;
+
 public interface User
 {
     public String getUserInfo();
-    public void saveScore();
+    public void saveScore(Database database);
     public void importData(String fileName);
     public void exportData(String fileName);
     public void addQuestions(String data[]);
