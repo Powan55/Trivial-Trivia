@@ -1,6 +1,5 @@
 package com.example.Database;
 
-import com.example.Command.LoginAction;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvValidationException;
@@ -20,7 +19,7 @@ import java.io.OutputStream;
 @Component
 public class CSVAdapter implements Database {
 
-    private static final Logger logger = Logger.getLogger(LoginAction.class.getName());
+    private static final Logger logger = Logger.getLogger(CSVAdapter.class.getName());
 
     @Autowired
     private ResourceLoader resourceLoader;

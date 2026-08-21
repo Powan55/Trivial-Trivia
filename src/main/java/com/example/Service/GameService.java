@@ -1,115 +1,84 @@
 package com.example.Service;
 
-import com.example.Authentication.User;
+import java.util.List;
+
 import com.example.Game.Question;
 import com.example.Game.Questions;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.logging.Logger;
-
 /**
- * Service class for managing the game logic.
- * Handles the flow of questions, scoring, and game state.
+ * Runs one round of the game: the question order, the cursor into it, and the score.
+ *
  * @author Laxmi Poudel
  */
 @Service
 public class GameService {
 
-    private List<Question> questions;
+    /** Points for a correct answer. A wrong answer costs nothing. */
+    private static final int POINTS_PER_CORRECT_ANSWER = 10;
+
+    private final Questions questions;
+
+    private List<Question> round;
     private Question currentQuestion;
     private int currentQuestionIndex;
     private int score;
+    private int right;
+    private int wrong;
 
-    private final Questions queObj;
-    private static final Logger logger = Logger.getLogger(GameService.class.getName());
-    /**
-     * Constructor for GameService.
-     *
-     * @param queObj The Questions object responsible for retrieving the questions from the CSV file.
-     */
-    @Autowired
-    public GameService(Questions queObj) {
-        this.queObj = queObj;
-        this.questions = loadQuestions();
-        this.currentQuestionIndex = 0;
-        this.score = 0;
+    public GameService(Questions questions) {
+        this.questions = questions;
+        startGame();
+    }
+
+    /** Reloads the questions and resets the cursor and the counters. */
+    public void startGame() {
+        this.round = questions.getQuestion();
         this.currentQuestion = null;
-    }
-
-    /**
-     * Loads questions from the Questions object.
-     *
-     * @return List of Question objects.
-     */
-    private List<Question> loadQuestions() {
-        return queObj.getQuestion();
-    }
-
-    /**
-     * Starts the game for the given user.
-     *
-     * @param user The user who is starting the game.
-     */
-    public void startGame(User user) {
         this.currentQuestionIndex = 0;
         this.score = 0;
+        this.right = 0;
+        this.wrong = 0;
     }
 
     /**
-     * Retrieves the next question in the sequence.
-     *
-     * @return The next Question object, or null if there are no more questions.
+     * @return the next question, or {@code null} once the round is over
      */
     public Question getNextQuestion() {
-        if (currentQuestionIndex < questions.size()) {
-            currentQuestion = questions.get(currentQuestionIndex);
-            currentQuestionIndex++;
-            return currentQuestion;
+        if (currentQuestionIndex >= round.size()) {
+            return null;
         }
-        return null;
-    }
-
-    /**
-     * Returns the current question that is being tracked by this instance.
-     *
-     * @return the current {@link Question} object, or {@code null} if no question is set.
-     */
-    public Question getCurrentQuestion(){
+        currentQuestion = round.get(currentQuestionIndex);
+        currentQuestionIndex++;
         return currentQuestion;
     }
 
-    /**
-     * Submits the user's answer and updates the score if the answer is correct.
-     *
-     * @param user     The user submitting the answer.
-     * @param question The current question being answered.
-     * @param answer   The user's answer.
-     */
-    public void submitAnswer(User user, Question question, String answer) {
+    public Question getCurrentQuestion() {
+        return currentQuestion;
+    }
+
+    /** Scores an answer. Answers are compared ignoring case. */
+    public void submitAnswer(Question question, String answer) {
+        if (question == null) {
+            return;
+        }
         if (question.getAnswer().equalsIgnoreCase(answer)) {
-            score++;
+            score += POINTS_PER_CORRECT_ANSWER;
+            right++;
+        } else {
+            wrong++;
         }
     }
 
-    /**
-     * Retrieves the current score for the given user.
-     *
-     * @param user The user whose score is being retrieved.
-     * @return The current score.
-     */
-    public int getScore(User user) {
+    public int getScore() {
         return score;
     }
 
-    /**
-     * Ends the game for the given user.
-     * Can be used to perform any cleanup or final actions after the game ends.
-     *
-     * @param user The user ending the game.
-     */
-    public void endGame(User user) {
-        // Perform any cleanup or final actions
+    public int getRight() {
+        return right;
+    }
+
+    public int getWrong() {
+        return wrong;
     }
 }

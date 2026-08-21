@@ -29,11 +29,6 @@ public class ProxyUser implements User{
 
 
     @Override
-    public void play() {
-        user.play();
-    }
-
-    @Override
     public String getUserInfo() {
         if(isAuthenticated)
             return user.getUserInfo();
