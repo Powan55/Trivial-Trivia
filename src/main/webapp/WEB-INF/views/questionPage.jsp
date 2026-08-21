@@ -19,7 +19,6 @@
 <div class="container">
     <h1>${question.question}</h1>
     <form action="${pageContext.request.contextPath}/play/answer" method="post">
-        <input type="hidden" name="questionId" value="${question.id}" />
         <div class="options">
             <input type="radio" id="option1" name="answer" value="${question.option1}" />
             <label for="option1">${question.option1}</label>
