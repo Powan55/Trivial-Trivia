@@ -1,5 +1,7 @@
 package com.example.Controller;
 
+import com.example.Authentication.User;
+import com.example.Database.Database;
 import com.example.Game.Question;
 import com.example.Service.GameService;
 import org.springframework.stereotype.Controller;
@@ -17,9 +19,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class PlayController {
 
     private final GameService gameService;
+    private final Database database;
+    private final User user;
 
-    public PlayController(GameService gameService) {
+    public PlayController(GameService gameService, Database database, User user) {
         this.gameService = gameService;
+        this.database = database;
+        this.user = user;
     }
 
     @GetMapping
@@ -46,9 +52,13 @@ public class PlayController {
 
     @GetMapping("/end")
     public String endGame(Model model) {
+        if (gameService.claimUnrecordedRound()) {
+            user.saveScore(database, gameService.getScore());
+        }
         model.addAttribute("score", gameService.getScore());
         model.addAttribute("right", gameService.getRight());
         model.addAttribute("wrong", gameService.getWrong());
+        model.addAttribute("authenticated", user.isAuthenticated());
         return "endGamePage";
     }
 }

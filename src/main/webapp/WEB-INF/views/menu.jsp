@@ -1,31 +1,34 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Main Menu</title>
-    <link rel="stylesheet" type="text/css" href="css/menu.css">
-    <!-- Include Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <title>Main menu - Trivial Trivia</title>
+    <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/menu.css">
 </head>
 <body>
 <div class="navbar">
     <div class="nav-logo">
-        <a href="#">Trivial-Trivia</a>
+        <a href="${pageContext.request.contextPath}/">Trivial Trivia</a>
     </div>
     <div class="nav-items">
         <ul>
-            <li><a href="#"> Home </a></li>
-            <li><a href="#"> Game </a></li>
-            <li><a href="#"> About </a></li>
-            <li><a href="#"> Contact </a></li>
+            <li><a href="${pageContext.request.contextPath}/play">Play</a></li>
+            <li><a href="${pageContext.request.contextPath}/stats">Scores</a></li>
         </ul>
     </div>
     <div class="nav-button">
         <div class="anim-layer"></div>
-        <!-- User button with icon -->
-        <a href="#"><i class="fas fa-user"></i></a>
+        <c:choose>
+            <c:when test="${authenticated}">
+                <a href="${pageContext.request.contextPath}/logout">Sign out</a>
+            </c:when>
+            <c:otherwise>
+                <a href="${pageContext.request.contextPath}/loginMenu">Sign in</a>
+            </c:otherwise>
+        </c:choose>
     </div>
     <div id="hamburger-menu">&#9776;</div>
 </div>
@@ -33,29 +36,22 @@
 <div id="mobile-menu">
     <div class="mobile-nav-items">
         <ul>
-            <li><a href="#"> Home </a></li>
-            <li><a href="#"> Game </a></li>
-            <li><a href="#"> About </a></li>
-            <li><a href="#"> Contact </a></li>
+            <li><a href="${pageContext.request.contextPath}/play">Play</a></li>
+            <li><a href="${pageContext.request.contextPath}/stats">Scores</a></li>
         </ul>
-    </div>
-    <div class="mobile-nav-button">
-        <div class="anim-layer"></div>
-        <!-- User button with icon -->
-        <a href="#"><i class="fas fa-user"></i></a>
     </div>
     <div id="hamburger-cross">&#10006;</div>
 </div>
 
 <div class="menu-container">
-    <h1>Main Menu</h1>
+    <h1>Main menu</h1>
+    <p>Playing as <c:out value="${player}"/></p>
     <ul class="menu-list">
-        <li><a href="/play">Play</a></li>
-        <li><a href="viewStat.jsp">View Stat</a></li>
-        <li><a href="#">Exit</a></li>
+        <li><a href="${pageContext.request.contextPath}/play">Play</a></li>
+        <li><a href="${pageContext.request.contextPath}/stats">View scores</a></li>
     </ul>
 </div>
-</body>
+
 <script>
     var hamburgerMenu = document.getElementById("hamburger-menu");
     var hamburgerCross = document.getElementById("hamburger-cross");
@@ -81,4 +77,5 @@
         }
     });
 </script>
+</body>
 </html>

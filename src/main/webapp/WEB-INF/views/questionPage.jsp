@@ -1,32 +1,29 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8"
-         pageEncoding="UTF-8"%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Question</title>
+    <title>Question - Trivial Trivia</title>
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/questionPage.css">
 </head>
 <body>
-<div class="container">
-    <h1>${question.question}</h1>
+<main>
+    <h1><c:out value="${question.question}"/></h1>
     <form action="${pageContext.request.contextPath}/play/answer" method="post">
-        <div class="options">
-            <input type="radio" id="option1" name="answer" value="${question.option1}" />
-            <label for="option1">${question.option1}</label>
-
-            <input type="radio" id="option2" name="answer" value="${question.option2}" />
-            <label for="option2">${question.option2}</label>
-
-            <input type="radio" id="option3" name="answer" value="${question.option3}" />
-            <label for="option3">${question.option3}</label>
-
-            <input type="radio" id="option4" name="answer" value="${question.option4}" />
-            <label for="option4">${question.option4}</label>
-        </div>
+        <fieldset>
+            <legend class="visually-hidden">Choose an answer</legend>
+            <c:forEach var="index" begin="1" end="4">
+                <div class="option">
+                    <input type="radio" id="option${index}" name="answer"
+                           value="<c:out value='${question.getOption(index)}'/>" required>
+                    <label for="option${index}"><c:out value="${question.getOption(index)}"/></label>
+                </div>
+            </c:forEach>
+        </fieldset>
         <button type="submit">Submit</button>
     </form>
-</div>
+</main>
 </body>
 </html>

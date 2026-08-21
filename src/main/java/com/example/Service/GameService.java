@@ -30,6 +30,7 @@ public class GameService {
     private int score;
     private int right;
     private int wrong;
+    private boolean recorded;
 
     public GameService(Questions questions) {
         this.questions = questions;
@@ -44,6 +45,7 @@ public class GameService {
         this.score = 0;
         this.right = 0;
         this.wrong = 0;
+        this.recorded = false;
     }
 
     /**
@@ -85,5 +87,17 @@ public class GameService {
 
     public int getWrong() {
         return wrong;
+    }
+
+    /**
+     * @return true the first time a finished round is claimed, false afterwards. The end page is
+     *         a plain GET, so a refresh would otherwise store the same score again.
+     */
+    public boolean claimUnrecordedRound() {
+        if (recorded) {
+            return false;
+        }
+        recorded = true;
+        return true;
     }
 }

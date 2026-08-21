@@ -25,6 +25,13 @@ class PlayControllerTest {
     private MockMvc mvc;
 
     @Test
+    void theLandingPageIsServed() throws Exception {
+        mvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/WEB-INF/views/home.jsp"));
+    }
+
+    @Test
     void startingARoundGoesToTheFirstQuestion() throws Exception {
         mvc.perform(get("/play").session(new MockHttpSession()))
                 .andExpect(status().is3xxRedirection())
