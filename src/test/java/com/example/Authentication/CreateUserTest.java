@@ -29,7 +29,7 @@ class CreateUserTest {
     @Test
     void writesTheUserWhereLoginLooksForIt() {
         assertThat(createUser.makeUser(new String[] {"Ada Lovelace", "ada", "correct horse"})).isTrue();
-        assertThat(new Login(csv).authenticate("ada", "correct horse")).isTrue();
+        assertThat(new Login(csv).authenticate("ada", "correct horse")).isNotNull();
     }
 
     @Test
@@ -51,8 +51,8 @@ class CreateUserTest {
         createUser.makeUser(new String[] {"Grace Hopper", "grace", "two"});
 
         assertThat(csv.readFile(DataFiles.USERS)).hasSize(2);
-        assertThat(new Login(csv).authenticate("ada", "one")).isTrue();
-        assertThat(new Login(csv).authenticate("grace", "two")).isTrue();
+        assertThat(new Login(csv).authenticate("ada", "one")).isNotNull();
+        assertThat(new Login(csv).authenticate("grace", "two")).isNotNull();
     }
 
     @Test

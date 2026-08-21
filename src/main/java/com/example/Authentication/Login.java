@@ -17,6 +17,7 @@ public class Login {
     private static final Logger logger = Logger.getLogger(Login.class.getName());
 
     /** Column layout of userData.csv: name, username, hash, salt. */
+    private static final int NAME = 0;
     private static final int USERNAME = 1;
     private static final int HASH = 2;
     private static final int SALT = 3;
@@ -28,19 +29,23 @@ public class Login {
         this.database = database;
     }
 
-    public boolean authenticate(String username, String password) {
+    /**
+     * @return the matching user, or {@code null} if the username is unknown or the password is
+     *         wrong. The caller is not told which -- that difference is useful to an attacker.
+     */
+    public RealUser authenticate(String username, String password) {
         if (username == null || password == null) {
-            return false;
+            return null;
         }
         for (String[] row : List.copyOf(database.readFile(DataFiles.USERS))) {
             if (row.length < COLUMNS || !row[USERNAME].equals(username)) {
                 continue;
             }
             if (row[HASH].equals(PasswordHashing.hashPassword(password, row[SALT]))) {
-                return true;
+                return new RealUser(row[NAME], row[USERNAME]);
             }
         }
         logger.log(Level.INFO, "Rejected a sign-in for an unknown user or a bad password");
-        return false;
+        return null;
     }
 }
