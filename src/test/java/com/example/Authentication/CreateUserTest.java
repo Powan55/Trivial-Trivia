@@ -9,6 +9,8 @@ import com.example.Database.DataFiles;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,19 +19,21 @@ class CreateUserTest {
     @TempDir
     Path tmp;
 
+    private final PasswordEncoder encoder = new BCryptPasswordEncoder();
+
     private CSVAdapter csv;
     private CreateUser createUser;
 
     @BeforeEach
     void setUp() {
         csv = new CSVAdapter(new DataDirectory(tmp.toString()));
-        createUser = new CreateUser(csv);
+        createUser = new CreateUser(csv, encoder);
     }
 
     @Test
     void writesTheUserWhereLoginLooksForIt() {
         assertThat(createUser.makeUser(new String[] {"Ada Lovelace", "ada", "correct horse"})).isTrue();
-        assertThat(new Login(csv).authenticate("ada", "correct horse")).isNotNull();
+        assertThat(new Login(csv, encoder).authenticate("ada", "correct horse")).isNotNull();
     }
 
     @Test
@@ -51,8 +55,14 @@ class CreateUserTest {
         createUser.makeUser(new String[] {"Grace Hopper", "grace", "two"});
 
         assertThat(csv.readFile(DataFiles.USERS)).hasSize(2);
-        assertThat(new Login(csv).authenticate("ada", "one")).isNotNull();
-        assertThat(new Login(csv).authenticate("grace", "two")).isNotNull();
+        assertThat(new Login(csv, encoder).authenticate("ada", "one")).isNotNull();
+        assertThat(new Login(csv, encoder).authenticate("grace", "two")).isNotNull();
+    }
+
+    @Test
+    void theStoredHashIsBcrypt() {
+        createUser.makeUser(new String[] {"Ada Lovelace", "ada", "correct horse"});
+        assertThat(csv.readFile(DataFiles.USERS).get(0)[2]).startsWith("$2a$");
     }
 
     @Test

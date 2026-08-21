@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import com.example.Database.DataFiles;
 import com.example.Database.Database;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,12 +16,14 @@ import org.springframework.stereotype.Component;
 public class CreateUser {
 
     private static final int USERNAME = 1;
-    private static final int COLUMNS = 4;
+    private static final int COLUMNS = 3;
 
     private final Database database;
+    private final PasswordEncoder passwordEncoder;
 
-    public CreateUser(Database database) {
+    public CreateUser(Database database, PasswordEncoder passwordEncoder) {
         this.database = database;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -32,11 +35,7 @@ public class CreateUser {
         if (!isUniqueUser(info[1], users)) {
             return false;
         }
-
-        String salt = PasswordHashing.generateSalt();
-        String hash = PasswordHashing.hashPassword(info[2], salt);
-
-        users.add(new String[] {info[0], info[1], hash, salt});
+        users.add(new String[] {info[0], info[1], passwordEncoder.encode(info[2])});
         database.writeFile(DataFiles.USERS, users);
         return true;
     }

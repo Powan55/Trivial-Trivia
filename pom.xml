@@ -52,6 +52,13 @@
             <artifactId>jakarta.servlet.jsp.jstl</artifactId>
         </dependency>
 
+        <!-- BCrypt only. The full security starter would put a login wall in front of every
+             route, which is not what this app does. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>com.opencsv</groupId>
             <artifactId>opencsv</artifactId>

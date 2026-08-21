@@ -1,11 +1,16 @@
 package com.example;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
-//@ComponentScan(basePackages = {"com.example.Game", "com.example.Controller", "com.example.Command", "com.example.Authentication", "com.example.Database"})
 public class AppConfig {
-    // Define additional configurations if needed
 
-
+    /** BCrypt at the library default cost. It carries its own salt, so no salt column. */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 }
