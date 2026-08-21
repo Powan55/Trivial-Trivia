@@ -13,7 +13,6 @@ import java.util.logging.Logger;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvValidationException;
-import org.springframework.stereotype.Component;
 
 /**
  * Reads and writes the application's data files as CSV.
@@ -21,8 +20,10 @@ import org.springframework.stereotype.Component;
  * <p>Both directions go through {@link DataDirectory}, so a file written here is the file read
  * back here. They used to disagree: reads resolved against the classpath and writes against the
  * working directory.</p>
+ *
+ * <p>Not a bean: {@link FileDatabase} owns one of these and picks it by file extension.</p>
  */
-@Component
+
 public class CSVAdapter implements Database {
 
     private static final Logger logger = Logger.getLogger(CSVAdapter.class.getName());
