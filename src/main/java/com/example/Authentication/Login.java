@@ -6,6 +6,7 @@ import java.util.logging.Logger;
 
 import com.example.Database.DataFiles;
 import com.example.Database.Database;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
@@ -16,17 +17,18 @@ public class Login {
 
     private static final Logger logger = Logger.getLogger(Login.class.getName());
 
-    /** Column layout of userData.csv: name, username, hash, salt. */
+    /** Column layout of userData.csv: name, username, bcrypt hash. */
     private static final int NAME = 0;
     private static final int USERNAME = 1;
     private static final int HASH = 2;
-    private static final int SALT = 3;
-    private static final int COLUMNS = 4;
+    private static final int COLUMNS = 3;
 
     private final Database database;
+    private final PasswordEncoder passwordEncoder;
 
-    public Login(Database database) {
+    public Login(Database database, PasswordEncoder passwordEncoder) {
         this.database = database;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -41,7 +43,7 @@ public class Login {
             if (row.length < COLUMNS || !row[USERNAME].equals(username)) {
                 continue;
             }
-            if (row[HASH].equals(PasswordHashing.hashPassword(password, row[SALT]))) {
+            if (passwordEncoder.matches(password, row[HASH])) {
                 return new RealUser(row[NAME], row[USERNAME]);
             }
         }

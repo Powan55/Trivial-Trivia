@@ -10,6 +10,8 @@ import com.example.Database.DataFiles;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -18,16 +20,17 @@ class LoginTest {
     @TempDir
     Path tmp;
 
+    private final PasswordEncoder encoder = new BCryptPasswordEncoder();
+
     private CSVAdapter csv;
     private Login login;
 
     @BeforeEach
     void setUp() {
         csv = new CSVAdapter(new DataDirectory(tmp.toString()));
-        login = new Login(csv);
-        String salt = PasswordHashing.generateSalt();
+        login = new Login(csv, encoder);
         csv.writeFile(DataFiles.USERS, new ArrayList<>(List.<String[]>of(
-                new String[] {"Ada Lovelace", "ada", PasswordHashing.hashPassword("correct horse", salt), salt})));
+                new String[] {"Ada Lovelace", "ada", encoder.encode("correct horse")})));
     }
 
     @Test
