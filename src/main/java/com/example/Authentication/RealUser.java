@@ -2,7 +2,6 @@ package com.example.Authentication;
 
 import com.example.Database.CSVAdapter;
 import com.example.Database.Database;
-import com.example.Game.Game;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -19,7 +18,6 @@ public class RealUser implements User
 
     private int wrong;
     private int right;
-    private Game game;
 
 
 
@@ -28,7 +26,6 @@ public class RealUser implements User
         wrong = 0;
         right = 0;
         score = 0;
-        game = new Game();
     }
 
     public RealUser(String name, String userName, String password)
@@ -39,13 +36,6 @@ public class RealUser implements User
         score = 0;
         wrong = 0;
         right = 0;
-        game = new Game();
-    }
-
-    @Override
-    public void play()
-    {
-        game.play();
     }
 
 

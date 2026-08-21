@@ -2,7 +2,6 @@ package com.example.Authentication;
 
 public interface User
 {
-    public void play();
     public String getUserInfo();
     public void saveScore();
     public void importData(String fileName);
