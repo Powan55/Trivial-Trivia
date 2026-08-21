@@ -31,35 +31,38 @@ class LoginTest {
     }
 
     @Test
-    void acceptsTheRightPassword() {
-        assertThat(login.authenticate("ada", "correct horse")).isTrue();
+    void acceptsTheRightPasswordAndHandsBackTheStoredUser() {
+        RealUser user = login.authenticate("ada", "correct horse");
+        assertThat(user).isNotNull();
+        assertThat(user.getUsername()).isEqualTo("ada");
+        assertThat(user.getUserInfo()).contains("Ada Lovelace");
     }
 
     @Test
     void rejectsTheWrongPassword() {
-        assertThat(login.authenticate("ada", "Correct horse")).isFalse();
+        assertThat(login.authenticate("ada", "Correct horse")).isNull();
     }
 
     @Test
     void rejectsAnUnknownUser() {
-        assertThat(login.authenticate("grace", "correct horse")).isFalse();
+        assertThat(login.authenticate("grace", "correct horse")).isNull();
     }
 
     @Test
     void rejectsNulls() {
-        assertThat(login.authenticate(null, "correct horse")).isFalse();
-        assertThat(login.authenticate("ada", null)).isFalse();
+        assertThat(login.authenticate(null, "correct horse")).isNull();
+        assertThat(login.authenticate("ada", null)).isNull();
     }
 
     @Test
     void rejectsEverythingWhenThereAreNoUsers() {
         csv.writeFile(DataFiles.USERS, new ArrayList<>());
-        assertThat(login.authenticate("ada", "correct horse")).isFalse();
+        assertThat(login.authenticate("ada", "correct horse")).isNull();
     }
 
     @Test
     void aTruncatedRowIsSkippedRatherThanThrowing() {
         csv.writeFile(DataFiles.USERS, new ArrayList<>(List.<String[]>of(new String[] {"Ada", "ada"})));
-        assertThat(login.authenticate("ada", "correct horse")).isFalse();
+        assertThat(login.authenticate("ada", "correct horse")).isNull();
     }
 }

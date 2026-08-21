@@ -5,13 +5,18 @@ import java.util.List;
 import com.example.Game.Question;
 import com.example.Game.Questions;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.annotation.SessionScope;
 
 /**
  * Runs one round of the game: the question order, the cursor into it, and the score.
  *
+ * <p>One instance per HTTP session. As a singleton it held one player's cursor and score for the
+ * whole application, so two people playing at once answered each other's questions.</p>
+ *
  * @author Laxmi Poudel
  */
 @Service
+@SessionScope
 public class GameService {
 
     /** Points for a correct answer. A wrong answer costs nothing. */

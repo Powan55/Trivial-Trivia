@@ -3,115 +3,51 @@ package com.example.Authentication;
 import com.example.Database.Database;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.annotation.SessionScope;
 
 /**
+ * Stands in for whoever is playing in this session, and refuses the things a guest may not do.
+ *
+ * <p>One instance per HTTP session. It used to hold the current user in a {@code static} field,
+ * which made everyone signed in at once the same person.</p>
+ *
  * @author Laxmi Poudel
  */
 @Component
 @Primary
-public class ProxyUser implements User{
+@SessionScope
+public class ProxyUser implements User {
 
-    private static ProxyUser instance;
-    private boolean isAuthenticated;
-    private static User user;
+    private RealUser signedIn;
 
-    public ProxyUser()
-    {
-        isAuthenticated = false;
+    public void signIn(RealUser user) {
+        this.signedIn = user;
     }
 
-    public static User getInstance() {
-        if (instance == null) {
-            instance = new ProxyUser();
-            user = new RealUser();
-        }
-        return instance;
+    public void signOut() {
+        this.signedIn = null;
     }
 
+    @Override
+    public boolean isAuthenticated() {
+        return signedIn != null;
+    }
+
+    @Override
+    public String getUsername() {
+        return signedIn == null ? null : signedIn.getUsername();
+    }
 
     @Override
     public String getUserInfo() {
-        if(isAuthenticated)
-            return user.getUserInfo();
-        else
-            return "Authentication.User: Guest\nScore: "+ user.getScore();
+        return signedIn == null ? "Guest" : signedIn.getUserInfo();
     }
 
+    /** A guest's score is not stored -- there is nothing to key it to. */
     @Override
-    public void saveScore(Database database) {
-        if(isAuthenticated)
-            user.saveScore(database);
-    }
-
-    @Override
-    public void importData(String fileName) {
-        if(isAuthenticated)
-            user.importData(fileName);
-        else
-            System.out.println("Please login to use this function!!");
-    }
-
-    @Override
-    public void exportData(String fileName)
-    {
-        if(isAuthenticated)
-            user.exportData(fileName);
-        else
-            System.out.println("Please login to use this function!!");
-    }
-
-    @Override
-    public void addQuestions(String data[]) {
-        if(isAuthenticated)
-            user.addQuestions(data);
-        else
-            System.out.println("Please login to use this function!!");
-    }
-
-    @Override
-    public int getScore() {
-        return user.getScore();
-    }
-
-    @Override
-    public void setScore(int score) {
-        user.setScore(score);
-    }
-
-    public void setAuthenticated(boolean authentication)
-    {
-        isAuthenticated = authentication;
-    }
-
-    @Override
-    public String getSalt() {
-        return new String();
-    }
-
-    @Override
-    public void setSalt(String salt) {}
-
-    @Override
-    public int getRight() {
-        return user.getRight();
-    }
-
-    @Override
-    public void setRight(int right) {
-        user.setRight((right));
-    }
-
-    @Override
-    public int getWrong() {
-        return user.getWrong();
-    }
-
-    @Override
-    public void setWrong(int wrong) {
-        user.setWrong(wrong);
-    }
-
-    public boolean getIsAuthenticated() {
-        return isAuthenticated;
+    public void saveScore(Database database, int score) {
+        if (signedIn != null) {
+            signedIn.saveScore(database, score);
+        }
     }
 }

@@ -2,21 +2,19 @@ package com.example.Authentication;
 
 import com.example.Database.Database;
 
-public interface User
-{
-    public String getUserInfo();
-    public void saveScore(Database database);
-    public void importData(String fileName);
-    public void exportData(String fileName);
-    public void addQuestions(String data[]);
-    public int getScore();
-    public void setScore(int score);
-    public void setAuthenticated(boolean authentication);
-    public String getSalt();
-    public void setSalt(String salt);
-    public int getRight();
-    public void setRight(int right);
-    public int getWrong();
-    public void setWrong(int wrong);
+/**
+ * Whoever is playing right now -- either a signed-in player or a guest.
+ */
+public interface User {
 
+    /** The stored username, or {@code null} for a guest. */
+    String getUsername();
+
+    /** A one-line description of who is playing, for the stats page. */
+    String getUserInfo();
+
+    boolean isAuthenticated();
+
+    /** Appends a finished round's score to the stats file. A guest's score is not stored. */
+    void saveScore(Database database, int score);
 }
