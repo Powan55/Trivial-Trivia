@@ -1,13 +1,8 @@
 package com.example.Game;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-
 /**
  * Represents a single trivia question with four possible options and an answer.
- * Each question has a unique ID, the question text, four answer options, and the correct answer.
+ * Each question holds the question text, four answer options, and the correct answer.
  *
  * <p>
  * This class is used in the trivia game to present questions to users and validate their answers.
@@ -15,12 +10,7 @@ import jakarta.persistence.Id;
  *
  * @author Laxmi Poudel
  */
-@Entity
 public class Question {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
     private String question;
     private String answer;
@@ -34,20 +24,6 @@ public class Question {
         this.option3 = option3;
         this.option4 = option4;
         this.answer = answer;
-    }
-
-    // No-arg constructor for JPA
-    protected Question() {}
-
-    // Getter methods
-
-    /**
-     * Gets the unique identifier for the question.
-     *
-     * @return The question ID.
-     */
-    public Long getId() {
-        return id;
     }
 
     /**
