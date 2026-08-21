@@ -4,9 +4,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.example.Authentication.Login;
-import com.example.Authentication.RealUser;
 import com.example.Authentication.ProxyUser;
+import com.example.Authentication.RealUser;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -33,14 +34,19 @@ public class LoginController {
     }
 
     @PostMapping("/loginServlet")
-    public String signIn(@RequestParam("username") String username,
-                         @RequestParam("password") String password) {
+    public String signIn(@RequestParam(defaultValue = "") String username,
+                         @RequestParam(defaultValue = "") String password,
+                         Model model) {
         RealUser authenticated = login.authenticate(username, password);
-        if (authenticated != null) {
-            user.signIn(authenticated);
-            return "redirect:/menu";
+        if (authenticated == null) {
+            logger.log(Level.INFO, "Sign-in rejected");
+            // One message for both cases: naming which half was wrong tells an attacker
+            // whether the username exists.
+            model.addAttribute("error", "That username and password did not match.");
+            model.addAttribute("username", username);
+            return "loginmenu";
         }
-        logger.log(Level.INFO, "Sign-in rejected");
-        return "redirect:/loginMenu";
+        user.signIn(authenticated);
+        return "redirect:/menu";
     }
 }
