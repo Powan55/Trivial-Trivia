@@ -7,6 +7,10 @@
 A multiple-choice trivia game. Spring Boot serves it, JSP renders it, and the questions live in a
 file you can swap for your own.
 
+**[Play the demo](https://powan55.github.io/Trivial-Trivia/)** — the game loop, running in your
+browser. Accounts, score history and import/export are server-side and need the app itself; see
+[Running it](#running-it).
+
 It started as a university project for two people and it shows in the git history: 25 pull
 requests, a design document, and a set of sequence diagrams drawn before any of it was written.
 Version 1.0.0 is the point where all of it actually works.
@@ -80,12 +84,31 @@ The original design documents and sequence diagrams are under
 the [database](SprintOne/Diagrams/Database.jpg) and [user authentication](SprintOne/Diagrams/User%20authentication.jpg)
 diagrams still describe what the code does.
 
-## Deploying it
+## The demo, and why it is only half the app
+
+<https://powan55.github.io/Trivial-Trivia/> is a static page. GitHub Pages serves files and does
+not run a server-side process, so what is deployed there is the game loop rewritten in about a
+hundred lines of JavaScript, under [`site/`](site). It scores the same way `GameService` does: ten
+points for a correct answer, nothing subtracted for a wrong one, answers compared ignoring case.
+
+Everything that needs a server is missing from it — registering, signing in, a saved score
+history, and an import that persists.
+
+`questions.json` is generated from `QuestionData.csv` when the demo deploys rather than committed,
+so adding a question to the real question set adds it to the demo too. Preview it locally with:
+
+```bash
+python scripts/questions-to-json.py src/main/resources/Data/QuestionData.csv site/questions.json
+cp src/main/resources/static/images/Trivial-Trivia.jpg site/
+python -m http.server 8081 --directory site
+```
+
+## Deploying the real thing
 
 Packaging is `war`, so `mvn package` gives you `target/trivial-trivia-1.0.0.war` for any Tomcat
-10.1 or later. There is no hosted demo: this used to run on Azure, the subscription behind it was
-disabled, and the workflow that deployed there has been removed rather than left to fail on every
-push.
+10.1 or later. There is no hosted instance of it: this used to run on Azure, the subscription
+behind it was disabled, and the workflow that deployed there has been removed rather than left to
+fail on every push.
 
 ## Known limits
 

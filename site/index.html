@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trivial Trivia</title>
+<meta name="description" content="A browser demo of Trivial Trivia, a multiple-choice trivia game built with Spring Boot and JSP.">
+<link rel="icon" href="Trivial-Trivia.jpg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="card">
+
+  <header class="head">
+    <img src="Trivial-Trivia.jpg" alt="" class="logo" width="56" height="56">
+    <div>
+      <h1>Trivial Trivia</h1>
+      <p class="sub">Ten questions. Ten points each.</p>
+    </div>
+  </header>
+
+  <!-- Start -->
+  <section id="start">
+    <p id="intro">Loading questions&hellip;</p>
+    <button id="begin" class="primary" disabled>Start</button>
+  </section>
+
+  <!-- One question at a time -->
+  <section id="round" hidden>
+    <div class="meta">
+      <span id="progress">Question 1 of 10</span>
+      <span id="score" aria-live="polite">Score: 0</span>
+    </div>
+
+    <form id="answer-form">
+      <fieldset>
+        <legend id="question">&nbsp;</legend>
+        <div id="options" class="options"></div>
+      </fieldset>
+      <button type="submit" class="primary">Submit</button>
+    </form>
+
+    <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+  </section>
+
+  <!-- Result -->
+  <section id="result" hidden>
+    <h2>Game over</h2>
+    <p class="final">Your final score is <strong id="final-score">0</strong></p>
+    <p class="tally"><span id="tally">0 right, 0 wrong</span></p>
+    <button id="again" class="primary">Play again</button>
+  </section>
+
+  <footer class="note">
+    <p>
+      This is a static demo of the game loop, running entirely in your browser.
+      Accounts, saved score history and question import/export live in the Java app &mdash;
+      clone the repo and run <code>mvn spring-boot:run</code> for those.
+    </p>
+    <p>
+      <a href="https://github.com/Powan55/Trivial-Trivia">Source</a> &middot;
+      <a href="https://github.com/Powan55/Trivial-Trivia/releases/latest">Release</a> &middot;
+      <a href="https://github.com/Powan55/Trivial-Trivia/blob/main/CHANGELOG.md">Changelog</a>
+    </p>
+  </footer>
+
+</main>
+<script src="demo.js"></script>
+</body>
+</html>

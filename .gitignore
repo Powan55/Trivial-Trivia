@@ -16,6 +16,12 @@ target/
 # Application data written at runtime
 data/
 
+# Static demo build output. questions.json and the logo are generated, not committed --
+# see .github/workflows/pages.yml
+_site/
+site/questions.json
+site/Trivial-Trivia.jpg
+
 # Logs and OS noise
 *.log
 .DS_Store
