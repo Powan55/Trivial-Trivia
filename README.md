@@ -113,6 +113,11 @@ instance shapes what it can be: it sleeps after fifteen idle minutes and the nex
 waking it, and it has no disk, so `~/.trivial-trivia` is seeded from the classpath again on every
 boot and accounts do not outlive a sleep.
 
+The JSPs are compiled by the build rather than by Jasper on the first request for each page: at a
+tenth of a CPU that was over a minute per page, and the `Dockerfile` hands the compiled classes to
+Jasper as its scratch directory so it uses them. Locally nothing changes — `mvn spring-boot:run`
+still compiles a JSP on demand, so an edited view still reloads.
+
 The same container runs locally:
 
 ```bash
