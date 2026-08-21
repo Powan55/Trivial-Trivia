@@ -1,67 +1,67 @@
 package com.example.Database;
 
-import com.opencsv.CSVReader;
-import com.opencsv.CSVWriter;
-import com.opencsv.exceptions.CsvValidationException;
-import jakarta.servlet.ServletContext;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
-import org.springframework.stereotype.Component;
-
-import java.io.*;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.io.OutputStream;
 
+import com.opencsv.CSVReader;
+import com.opencsv.CSVWriter;
+import com.opencsv.exceptions.CsvValidationException;
+import org.springframework.stereotype.Component;
+
+/**
+ * Reads and writes the application's data files as CSV.
+ *
+ * <p>Both directions go through {@link DataDirectory}, so a file written here is the file read
+ * back here. They used to disagree: reads resolved against the classpath and writes against the
+ * working directory.</p>
+ */
 @Component
 public class CSVAdapter implements Database {
 
     private static final Logger logger = Logger.getLogger(CSVAdapter.class.getName());
 
-    @Autowired
-    private ResourceLoader resourceLoader;
+    private final DataDirectory dataDirectory;
 
-    private ServletContext servletContext;
+    public CSVAdapter(DataDirectory dataDirectory) {
+        this.dataDirectory = dataDirectory;
+    }
 
     @Override
     public ArrayList<String[]> readFile(String fileName) {
         ArrayList<String[]> data = new ArrayList<>();
-        try {
-            Resource resource = new ClassPathResource(fileName);
-            if (resource.exists()) {
-                try (InputStream is = resource.getInputStream();
-                     CSVReader reader = new CSVReader(new InputStreamReader(is))) {
-
-                    String[] line;
-                    while ((line = reader.readNext()) != null) {
-                        data.add(line);
-                    }
-                }
-            } else {
-                logger.log(Level.SEVERE, "File not found: " + fileName);
+        Path path = dataDirectory.resolve(fileName);
+        if (!Files.exists(path)) {
+            logger.warning("No such data file, returning nothing: " + path);
+            return data;
+        }
+        try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8);
+             CSVReader csv = new CSVReader(reader)) {
+            String[] line;
+            while ((line = csv.readNext()) != null) {
+                data.add(line);
             }
         } catch (IOException | CsvValidationException e) {
-            logger.log(Level.SEVERE, "Error reading the file: " + fileName, e);
+            logger.log(Level.SEVERE, "Error reading " + path, e);
+            return new ArrayList<>();
         }
         return data;
     }
 
-
-
     @Override
     public void writeFile(String fileName, ArrayList<String[]> data) {
-        try (OutputStream os = new FileOutputStream( fileName);
-             CSVWriter writer = new CSVWriter(new OutputStreamWriter(os))) {
-            for (String[] row : data) {
-                writer.writeNext(row);
-            }
+        Path path = dataDirectory.resolve(fileName);
+        try (Writer writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8);
+             CSVWriter csv = new CSVWriter(writer)) {
+            csv.writeAll(data);
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Error writing to the file: " + fileName, e);
+            logger.log(Level.SEVERE, "Error writing " + path, e);
         }
     }
-
 }
-

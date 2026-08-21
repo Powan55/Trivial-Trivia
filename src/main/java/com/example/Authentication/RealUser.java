@@ -1,6 +1,6 @@
 package com.example.Authentication;
 
-import com.example.Database.CSVAdapter;
+import com.example.Database.DataFiles;
 import com.example.Database.Database;
 import org.springframework.stereotype.Component;
 
@@ -50,12 +50,10 @@ public class RealUser implements User
     }
 
     @Override
-    public void saveScore() {
-        Database database = new CSVAdapter();
-        ArrayList<String[]> data = database.readFile("Trivial-Trivia/src/Data/StatData.csv");
-        String[] info = {userName, (String.valueOf(score))};
-        data.add(info);
-        database.writeFile("Trivial-Trivia/src/Data/StatData.csv", data);
+    public void saveScore(Database database) {
+        ArrayList<String[]> data = database.readFile(DataFiles.STATS);
+        data.add(new String[] {userName, String.valueOf(score)});
+        database.writeFile(DataFiles.STATS, data);
     }
 
     @Override

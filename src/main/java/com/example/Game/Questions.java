@@ -1,61 +1,53 @@
 package com.example.Game;
 
-import com.example.Database.CSVAdapter;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.example.Database.DataFiles;
 import com.example.Database.Database;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-
 /**
- * The {@code Questions} class is responsible for managing and retrieving trivia questions
- * from a CSV file. It uses a {@link Database} adapter to read the file and convert the data
- * into a list of {@link Question} objects.
+ * Loads the trivia questions.
  *
- * <p>
- * The CSV file should follow a predefined structure, where each row represents a question
- * and its associated options and answer.
- * </p>
+ * <p>The file is a CSV with a header row:</p>
  *
- * <p>
- * Example CSV structure:
  * <pre>
- * ID, Question, Option1, Option2, Option3, Option4, Answer
- * 1, What is the capital of France?, Paris, Lyon, Marseille, Nice, Paris
+ * Question,Option1,Option2,Option3,Option4,Answer
+ * What is the capital of France?,London,Berlin,Madrid,Paris,Paris
  * </pre>
- * </p>
  *
  * @author Laxmi Poudel
  */
 @Component
 public class Questions {
 
-    private ArrayList<String[]> question;
-    private final String fileName;
+    /** Header plus one option per column plus the answer. */
+    private static final int COLUMNS = 6;
 
-    @Autowired
     private final Database database;
 
-    /**
-     * Constructs a new {@code Questions} object and initializes the database adapter.
-     * The CSV file path is also specified during construction.
-     */
-    public Questions() {
-        database = new CSVAdapter();
-        question = new ArrayList<>();
-        fileName = "Data/QuestionData.csv";
+    public Questions(Database database) {
+        this.database = database;
     }
 
     /**
-     * Reads the questions from the CSV file and returns them as a list of {@link Question} objects.
+     * Reads the questions and returns them, skipping the header row.
      *
-     * @return A list of {@link Question} objects containing the data from the CSV file.
+     * <p>A missing or empty file yields an empty list. Rows with the wrong number of columns are
+     * skipped rather than failing the whole read.</p>
      */
     public ArrayList<Question> getQuestion() {
         ArrayList<Question> questions = new ArrayList<>();
-        question = database.readFile(fileName);
-        for (String[] data : question.subList(1, question.size())) {
-            questions.add(new Question(data[0], data[1], data[2], data[3], data[4], data[5]));
+        List<String[]> rows = database.readFile(DataFiles.QUESTIONS);
+        if (rows.size() < 2) {
+            return questions;
+        }
+        for (String[] row : rows.subList(1, rows.size())) {
+            if (row.length < COLUMNS) {
+                continue;
+            }
+            questions.add(new Question(row[0], row[1], row[2], row[3], row[4], row[5]));
         }
         return questions;
     }
