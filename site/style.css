@@ -49,6 +49,20 @@ h2 { font-size: 1.35rem; margin: 0 0 0.75rem; }
     margin-bottom: 1.25rem;
 }
 
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+.choice {
+    display: flex;
+    flex-direction: column;
+    border: 2px solid var(--line);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.choice h2 { font-size: 1.15rem; margin-bottom: 0.6rem; }
+.choice p { color: var(--muted); font-size: 0.9rem; margin: 0 0 0.75rem; }
+.choice .wait { font-size: 0.82rem; }
+
 fieldset { border: 0; padding: 0; margin: 0; }
 legend { font-size: 1.2rem; font-weight: 600; padding: 0; margin-bottom: 1rem; }
 
@@ -70,7 +84,7 @@ legend { font-size: 1.2rem; font-weight: 600; padding: 0; margin-bottom: 1rem; }
 .options label:has(input:focus-visible) { outline: 3px solid var(--accent-dark); outline-offset: 2px; }
 .options label:has(input:checked) { border-color: var(--accent); background: #f2f8ff; }
 
-button {
+button, .btn {
     font: inherit;
     cursor: pointer;
     border-radius: 8px;
@@ -80,10 +94,14 @@ button {
     color: var(--accent);
 }
 
-button.primary { background: var(--accent); color: #fff; margin-top: 1.25rem; }
-button:hover:not(:disabled) { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+button.primary, .btn.primary { background: var(--accent); color: #fff; margin-top: 1.25rem; }
+button:hover:not(:disabled), .btn:hover { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
 button:disabled { opacity: 0.55; cursor: not-allowed; }
-button:focus-visible { outline: 3px solid var(--accent-dark); outline-offset: 3px; }
+button:focus-visible, .btn:focus-visible { outline: 3px solid var(--accent-dark); outline-offset: 3px; }
+
+.btn { display: block; text-align: center; text-decoration: none; }
+/* Bottoms out both cards' buttons on the same line whatever the copy above them does. */
+.choice .action { margin-top: auto; }
 
 .feedback { min-height: 1.5rem; margin: 0.9rem 0 0; font-weight: 600; }
 .feedback.right { color: var(--right); }
@@ -112,6 +130,7 @@ button:focus-visible { outline: 3px solid var(--accent-dark); outline-offset: 3p
 
 @media (max-width: 480px) {
     .card { padding: 1.35rem; }
+    .choices { grid-template-columns: 1fr; }
     h1 { font-size: 1.35rem; }
     legend { font-size: 1.05rem; }
 }

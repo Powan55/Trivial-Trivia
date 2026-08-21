@@ -8,8 +8,10 @@ A multiple-choice trivia game. Spring Boot serves it, JSP renders it, and the qu
 file you can swap for your own.
 
 **[Play the demo](https://powan55.github.io/Trivial-Trivia/)** — the game loop, running in your
-browser. Accounts, score history and import/export are server-side and need the app itself; see
-[Running it](#running-it).
+browser, with nothing to wait for. The same page links to
+**[the full app](https://trivial-trivia.onrender.com/)**, which has the accounts, the score history
+and the import/export the demo cannot do. That one runs on a free instance that sleeps when it is
+idle, so the first page can take a minute or two.
 
 It started as a university project for two people and it shows in the git history: 25 pull
 requests, a design document, and a set of sequence diagrams drawn before any of it was written.
@@ -92,7 +94,7 @@ hundred lines of JavaScript, under [`site/`](site). It scores the same way `Game
 points for a correct answer, nothing subtracted for a wrong one, answers compared ignoring case.
 
 Everything that needs a server is missing from it — registering, signing in, a saved score
-history, and an import that persists.
+history, and an import that persists. That is what the hosted instance is for.
 
 `questions.json` is generated from `QuestionData.csv` when the demo deploys rather than committed,
 so adding a question to the real question set adds it to the demo too. Preview it locally with:
@@ -105,10 +107,21 @@ python -m http.server 8081 --directory site
 
 ## Deploying the real thing
 
-Packaging is `war`, so `mvn package` gives you `target/trivial-trivia-1.0.0.war` for any Tomcat
-10.1 or later. There is no hosted instance of it: this used to run on Azure, the subscription
-behind it was disabled, and the workflow that deployed there has been removed rather than left to
-fail on every push.
+<https://trivial-trivia.onrender.com/> is the app itself, built from the `Dockerfile` here and
+redeployed by Render on every push to `main`; `render.yaml` is the whole configuration. The free
+instance shapes what it can be: it sleeps after fifteen idle minutes and the next request pays for
+waking it, and it has no disk, so `~/.trivial-trivia` is seeded from the classpath again on every
+boot and accounts do not outlive a sleep.
+
+The same container runs locally:
+
+```bash
+docker build -t trivial-trivia . && docker run --rm -p 8080:8080 trivial-trivia
+```
+
+Packaging is `war`, so `mvn package` also gives you `target/trivial-trivia-1.0.0.war` for any
+Tomcat 10.1 or later. This used to run on Azure; that subscription was disabled and the workflow
+that deployed there was removed rather than left to fail on every push.
 
 ## Known limits
 
@@ -117,6 +130,9 @@ fail on every push.
   interface is the seam it would go behind.
 - Sessions are in-memory, so a restart signs everyone out.
 - There is no password reset, and no rate limit on sign-in attempts.
+- The hosted instance is public and shared. Anyone can register on it, and an account can import a
+  question set everyone else on it then plays. It wipes itself every time it sleeps, which is the
+  only thing keeping that reasonable.
 
 ## License
 

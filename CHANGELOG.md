@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- A hosted instance of the app on Render, built from a `Dockerfile` in the repository
+- The demo page now offers both: play in the browser, or open the full app
+
 ## v1.0.0 — 2026-08-20
 
 The first release where the whole thing works end to end. Before this, sign-in could not succeed

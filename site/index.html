@@ -19,10 +19,30 @@
     </div>
   </header>
 
-  <!-- Start -->
+  <!-- Start: play here, or go to the real thing -->
   <section id="start">
-    <p id="intro">Loading questions&hellip;</p>
-    <button id="begin" class="primary" disabled>Start</button>
+    <div class="choices">
+
+      <div class="choice">
+        <h2>Play it now</h2>
+        <p id="intro">Loading questions&hellip;</p>
+        <button id="begin" class="primary action" disabled>Start the demo</button>
+      </div>
+
+      <div class="choice">
+        <h2>Run the full app</h2>
+        <p>
+          The Spring Boot version, with the parts a static page cannot do: accounts, a saved score
+          history, and importing or exporting the question set as CSV, JSON or XML.
+        </p>
+        <p class="wait">
+          It sleeps when nobody is using it, so the first page can take a minute or two to answer.
+          Anything you save there goes when it sleeps again.
+        </p>
+        <a class="btn primary action" href="https://trivial-trivia.onrender.com/">Open the full app</a>
+      </div>
+
+    </div>
   </section>
 
   <!-- One question at a time -->
@@ -52,11 +72,7 @@
   </section>
 
   <footer class="note">
-    <p>
-      This is a static demo of the game loop, running entirely in your browser.
-      Accounts, saved score history and question import/export live in the Java app &mdash;
-      clone the repo and run <code>mvn spring-boot:run</code> for those.
-    </p>
+    <p>Or run it yourself: <code>mvn spring-boot:run</code>.</p>
     <p>
       <a href="https://github.com/Powan55/Trivial-Trivia">Source</a> &middot;
       <a href="https://github.com/Powan55/Trivial-Trivia/releases/latest">Release</a> &middot;
