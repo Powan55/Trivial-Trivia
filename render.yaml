@@ -1,0 +1,13 @@
+# One free web service, built from the Dockerfile and redeployed on every push to main.
+#
+# Free instances sleep after 15 minutes idle and cold-start on the next request; the demo page
+# warns about that wait. There is no disk either, so ~/.trivial-trivia inside the container is
+# reseeded from the classpath on every boot and accounts do not outlive a sleep.
+services:
+  - type: web
+    name: trivial-trivia
+    runtime: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /
+    autoDeploy: true
