@@ -17,6 +17,7 @@
         <ul>
             <li><a href="${pageContext.request.contextPath}/play">Play</a></li>
             <li><a href="${pageContext.request.contextPath}/stats">Scores</a></li>
+            <li><a href="${pageContext.request.contextPath}/questions">Questions</a></li>
         </ul>
     </div>
     <div class="nav-button">
@@ -49,6 +50,7 @@
     <ul class="menu-list">
         <li><a href="${pageContext.request.contextPath}/play">Play</a></li>
         <li><a href="${pageContext.request.contextPath}/stats">View scores</a></li>
+        <li><a href="${pageContext.request.contextPath}/questions">Import or export questions</a></li>
     </ul>
 </div>
 
