@@ -1,2 +1,22 @@
-*misc.xml
-*vcs.xml
+# Maven
+target/
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Eclipse / VS Code
+.classpath
+.project
+.settings/
+.vscode/
+
+# Application data written at runtime
+data/
+
+# Logs and OS noise
+*.log
+.DS_Store
+Thumbs.db
