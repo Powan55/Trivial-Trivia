@@ -13,5 +13,7 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /src/target/trivial-trivia-*.war app.war
 EXPOSE 8080
-# Shell form on purpose: $PORT is set by the host and has to expand.
-CMD exec java -XX:MaxRAMPercentage=75 -jar app.war --server.port=${PORT:-8080}
+# Shell form on purpose: $PORT is set by the host and has to expand. The JIT is capped at the
+# first tier because a free instance gets a tenth of a CPU and every visit starts by waking the
+# thing up -- startup is what hurts here, not steady-state throughput.
+CMD exec java -XX:MaxRAMPercentage=75 -XX:TieredStopAtLevel=1 -jar app.war --server.port=${PORT:-8080}
