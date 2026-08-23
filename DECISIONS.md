@@ -195,15 +195,28 @@ history, the import endpoint, the writing half of the API and the non-health act
 require authentication.
 
 Guest play stops being a special case and becomes anonymous authentication, which is precisely
-what `ProxyUser` with a null user modelled by hand. `ProxyUser` is replaced by a request-scoped
+what `ProxyUser` with a null user modelled by hand. `ProxyUser` is replaced by a singleton
 adapter over `SecurityContextHolder`; the `CurrentPlayer` interface it implements survives,
 because four controllers and several views already speak it.
 
-**Consequences.** CSRF tokens go into every form. Session fixation protection, `HttpOnly` and
-`SameSite` cookie handling, and a correct sign-out all become framework behaviour rather than
-`session.invalidate()` in a controller. `LoginController.signIn` and `AccountController.logout`
-are deleted; `/loginMenu` and `/loginServlet` stay as the login page and processing URL so no
-bookmark or test breaks on the path.
+**Consequences.** CSRF tokens go into every form. Session fixation protection and a correct
+sign-out become framework behaviour, replacing `session.invalidate()` in a controller.
+`LoginController.signIn` and `AccountController.logout` are deleted; `/loginMenu` and
+`/loginServlet` stay as the login page and processing URL so no bookmark or test breaks on the
+path.
+
+Cookie flags are not in that list, and it is worth being exact about why. `HttpOnly` on
+`JSESSIONID` is Tomcat's default, not Spring Security's. `SameSite` is nobody's default: the
+container does not set it and the security starter does not add it. The header observed on the
+running application was `Set-Cookie: JSESSIONID=...; Path=/; HttpOnly`, with no `SameSite` and no
+`Secure`. Both come from properties the application sets for itself,
+`server.servlet.session.cookie.same-site=lax` and `secure=true`, and `secure=true` belongs under
+the production profile only, since a secure cookie over plain HTTP locally is a cookie the browser
+never sends back.
+
+The general form is worth carrying into the rest of this file: "the framework handles it" and "the
+framework can be configured to handle it" are different claims, and only one of them survives
+reading the response headers.
 
 Sign-out becomes a POST, because a GET that ends your session is something any page can trigger.
 That is a small JSP change and a correct one.
@@ -211,6 +224,15 @@ That is a small JSP change and a correct one.
 The `PasswordEncoder` bean stays an explicit `BCryptPasswordEncoder`. Spring's default
 `DelegatingPasswordEncoder` expects an `{id}` prefix on every hash and every stored hash here
 lacks one, so installing it would break every existing password at once.
+
+That adapter is a plain singleton, and the reason is worth writing down because "why is this not
+request-scoped?" is the first question anyone reading it will ask. `SecurityContextHolder` is a
+`ThreadLocal` that the filter chain fills and clears around each request, so a singleton reading it
+on every call is already per-request-correct. Request scope would add a CGLIB proxy to buy nothing,
+and it would be worse than nothing: a scoped bean resolves once and holds what it resolved, and
+registration signs a new account in halfway through a request. The old `ProxyUser` needed session
+scope because it held the state itself. This one holds none, which is what makes the scope question
+go away rather than needing an answer.
 
 The README's claim that the Proxy pattern is one of three patterns that survived needs rewriting
 rather than deleting. The proxy is still there; it now stands in front of the framework's context
@@ -534,3 +556,277 @@ The cost is that it forwards the whole map, not the two keys it means. Any futur
 aimed at `/play/question` will also arrive at `/play/end`. Narrow it to `answerCorrect` and
 `correctAnswer` the first time something else flashes there. Until then, naming the two keys is a
 list to keep in sync for no benefit.
+
+---
+
+## 19. A JSP app cannot verify its security configuration through MockMvc
+
+**Status:** accepted
+
+**Context.** M2 shipped with 210 green tests and a completely broken application. Every page
+answered 302 to `/loginMenu`, and so did `/loginMenu`, so a browser followed the redirect until it
+gave up. That included `/`, which is the host's health check, so the deploy would never have gone
+live.
+
+The cause is one default. Spring Boot 3 registers the security filter for every servlet
+dispatcher type, and the documented default of `spring.security.filter.dispatcher-types` is
+`async, error, forward, include, request`. Rendering a JSP view is a FORWARD to
+`/WEB-INF/views/*.jsp`, a path no authorization rule permits, because it is not a URL anyone
+requests. So with an explicit `SecurityFilterChain` in place, authorisation ran a second time on
+the forward and denied what it had already passed on the request.
+
+**The part worth recording is why every test was green.** MockMvc does not perform a forward; it
+records that one was requested and asserts on the recorded name. No second dispatch happens, so
+the security filter never runs a second time, so the entire MockMvc suite is structurally
+incapable of seeing this failure. It is not a gap in test coverage. It is a gap in what that test
+tool observes, and no number of additional MockMvc tests would close it.
+
+**Decision.** Two things, and the second is the durable one.
+
+The property is narrowed to `request,error,async`, which is what Boot 2 defaulted to. Nothing is
+given up by narrowing it. Authorization has already run on the REQUEST dispatch by the time the
+view renders, and a client cannot originate a FORWARD.
+
+The test boundary moves. A test class boots real Tomcat on a random port and fetches pages over
+HTTP, so forwards actually happen and the filter chain sees what it will see in production. Every
+route that renders a view has a case in it, `/` first, because that is what the host polls. The
+rule that follows: **a change to security configuration is verified through the real-container
+test, not through MockMvc.**
+
+Measured, with the test class in place and the property reverted to Boot's default:
+
+```
+Boot default dispatcher-types : Tests run: 11, Failures: 8, Errors: 3  BUILD FAILURE
+as shipped                    : Tests run: 11, Failures: 0, Errors: 0  BUILD SUCCESS
+```
+
+**Consequences.** A real container is slower than MockMvc, so this is a small class covering the
+rendered pages and the CSRF token, not a second copy of the suite. MockMvc keeps everything it is
+good at: which handler ran, what went into the model, where a redirect pointed. The boundary is
+now legible. MockMvc tests what the controller decided, and the container test covers what the
+container does with that decision.
+
+The generalisable version, which is the reason this is an ADR and not a comment in a properties
+file: a test tool that simulates part of the stack cannot find bugs in the part it simulates. JSP
+rendering is a servlet forward, forwards are a container behaviour, and MockMvc's forward is a
+recording. The same blind spot covers anything that depends on the FORWARD dispatch or on a view
+actually rendering, not just this one property. It is also one of three times this milestone that a
+green result meant nothing, which is its own decision [22].
+
+Revisit when views stop being forwards. An API that returns a body has no second dispatch and none
+of this applies to it. That is also the day the JSP goes, so not soon.
+
+---
+
+## 20. `round_questions` is deferred to M4, with its foreign key still open
+
+**Status:** deferred, forced at M4
+
+**Context.** M1 shipped `users`, `categories`, `questions` and `rounds`, and not
+`round_questions`. That was a choice, not an oversight, and it deserves recording so it does not
+read as one.
+
+The open question is what `round_questions.question_id` does when the question it points at goes
+away, and an import replaces the entire question set, so questions go away routinely. Three
+options, none of them free:
+
+- `ON DELETE CASCADE` quietly deletes a player's answer history the next time anyone imports.
+- `ON DELETE SET NULL` keeps the history and loses which question was asked, which is most of what
+  the history was for.
+- `RESTRICT` keeps the history intact and makes import fail as soon as anybody has played, which
+  breaks a feature the README advertises.
+
+The way out is probably versioning: an import adds a new generation of questions rather than
+replacing rows, and old answers keep pointing at the generation they were asked from. That is a
+schema decision with real weight, and M4 is where it belongs, because M4 designs the timer and
+needs `served_at` in the same table. Deciding it now would mean deciding it with less information
+than the person implementing it will have.
+
+**Decision.** Defer. M1 stores the round-level score, which is all the score history and the
+leaderboard need. M4 adds the table and picks the policy in the same slice.
+
+**Consequences.** Nothing in M1 is shaped around a table that does not exist yet, and expand and
+contract [14] makes the deferral cheap: adding `round_questions` later is purely additive, with no
+backfill and no rewrite of a shipped migration.
+
+The deadline is not soft. A server-authoritative per-question timer cannot exist without a durable
+`served_at` per question, so M4 cannot start without settling this. That is the forcing function,
+and it is better than a note in a backlog.
+
+---
+
+## 21. `style-src` keeps `'unsafe-inline'`, and `script-src` does not
+
+**Status:** accepted
+
+**Context.** The policy that shipped:
+
+```
+default-src 'self'; script-src 'self' 'nonce-<per-response>';
+style-src 'self' 'unsafe-inline'; style-src-elem 'self';
+object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+```
+
+`script-src` carries a fresh nonce per response and no `'unsafe-inline'`, and a test asserts both,
+so the easy fix for the next inline script cannot be applied without someone noticing.
+
+`style-src` is the exception. Three views compute a percentage into a `style=` attribute: the
+question progress bar, the result ring on the end page, and the bars on the stats page. A nonce
+cannot cover a style attribute, because nonces apply to `<style>` elements and `<link>` and not to
+attributes, and the values change per request, so a hash cannot cover them either.
+
+That much is CSP. What follows from it is a choice, and there was a way out that was not taken.
+All three values are already integers by the time they reach the attribute, so precomputed classes
+would remove the attributes entirely: twenty-one classes at five percent granularity, or a hundred
+and one at one percent. With the shipped ten-question set the round progress bar only ever shows
+multiples of ten, so it does not even need the fine version. Two of the three are progress bars
+and could be a native `<progress value max>`, which carries no inline style at all. Either route
+ends at `style-src 'self'` with no concession in the policy.
+
+**Decision.** Keep `'unsafe-inline'` in `style-src` for now, put `style-src-elem 'self'` next to
+it, and hold the `script-src` line absolutely.
+
+**Consequences.** This is a trade with a price, not a necessity, and the price is worth naming.
+What `'unsafe-inline'` on styles exposes is defacement. An injected style can restyle the page and
+cannot get anything out, because `default-src 'self'` leaves CSS nowhere to send it. The
+attribute-selector exfiltration trick, where a selector matches on a value and leaks it through
+`background: url(https://attacker/...)`, dies at `default-src`, not at `style-src`. So the
+concession is three views and a stylesheet's worth of churn, weighed against a weakening whose
+worst case is a page that looks wrong.
+
+`style-src-elem 'self'` buys back the `<style>` element half of the directive in browsers that
+implement it. Browsers that do not fall back to `style-src`, so an unfamiliar directive degrades
+toward a working page rather than a broken one, which is the right direction for a policy that has
+to hold on browsers nobody tested.
+
+The asymmetry is the whole point. Script injection is code execution. Style injection is
+defacement with no channel out. Spending the one concession on the directive that cannot execute
+is the trade, made on purpose.
+
+Reverse it whenever those three percentages are worth moving, which is a small change nobody has
+needed yet: precompute the classes, or use `<progress>` where it fits, then drop `style-src` to
+`'self'` and delete `style-src-elem`. Nothing else in the policy depends on either.
+
+---
+
+## 22. Prove the instrument before trusting a zero
+
+**Status:** accepted
+
+**Context.** The CSP work reported zero violations across eight pages, collected from headless
+Chrome. That number is worth nothing on its own. A silently violated CSP renders identically to a
+working one: the pre-paint theme script is blocked, the white flash comes back, and no page says
+so. "No violations reported" and "the collector reports nothing" are the same output.
+
+So before the zero was reported, the instrument was checked: a throwaway server served a
+deliberately wrong nonce, and headless Chrome was confirmed to surface the violation. Only then
+was a clean run across the real pages worth anything.
+
+**Decision.** A negative result is reported together with the demonstrated sensitivity of whatever
+produced it. If a check is going to be cited as evidence that something does not happen, it gets a
+run where it does happen, first.
+
+**Consequences.** This is a rule rather than an anecdote because the same shape turned up three
+times in one milestone:
+
+- An assertion that the theme toggle was `hidden` passed while the button was rendering. The
+  attribute was true; the attribute was not the question.
+- 210 green MockMvc tests said nothing about a security configuration that broke every page in the
+  app, because MockMvc records a forward instead of performing one [19].
+- A CSP with zero reported violations, from a collector nobody had shown could report one.
+
+Every one is the same failure. An instrument answers a slightly different question from the one
+being asked, answers it correctly, and gets read as an answer to the original. None of the three
+was a coverage gap, and more of the same tests would have closed none of them.
+
+The cost is one extra run per negative claim, which is small. The alternative is a green result
+whose only real content is that nothing was looking.
+
+There is nothing here to revisit. It is a habit rather than a decision, written down because
+habits are the part that does not survive a handover.
+
+---
+
+## 23. The login throttle locks accounts, which is a denial of service by design
+
+**Status:** accepted, with a known cost
+
+**Context.** The throttle counts failed sign-ins per username and locks that account for fifteen
+minutes after five failures. It stops password guessing, which is what it was added for.
+
+It also means anyone who knows a username can lock its owner out with five bad posts, and keep
+them out indefinitely by repeating after each window. On a public instance where usernames are
+semi-guessable and a leaderboard will eventually display them, that is a real cost rather than a
+theoretical one, and none of the earlier entries admitted it.
+
+The alternatives, and what each one loses:
+
+- **Key on IP only.** Any botnet walks through it, and it punishes shared addresses: a university
+  network or a mobile carrier is one IP to the server.
+- **Key on IP and username together.** Removes the cross-address lockout, so nobody can lock an
+  account they do not share an address with. A distributed attacker then guesses freely, which is
+  the case the throttle exists for.
+- **Delay instead of deny.** Exponential backoff on the response makes guessing expensive without
+  a correct password ever stopping working. This is the real answer, and it is what to build when
+  the lockout becomes a problem in practice.
+
+**Decision.** Username only, accepting the lockout as a denial of service, on an instance with no
+reputation data, no address allowlist and nothing to coordinate with. Backoff is the upgrade, and
+the trigger is somebody actually using the lockout as a weapon.
+
+**The eviction rule is load-bearing.** Usernames are whatever was typed, so the map needs a
+ceiling, and what happens at the ceiling decides whether the throttle works at all. The first
+version refused new entries once full, which handed an attacker a way to switch the throttle off:
+post ten thousand junk usernames, fill the map, and every account not already tracked stops being
+counted. What ships instead evicts entries whose window has expired, and only refuses when the map
+is still full of live counters. Refusing in that state keeps the counters that were actually
+earned, which is the opposite of what someone flooding the map wants.
+
+Anyone tidying that branch needs to know it is holding something up. A plain "reject when full" is
+the bug, not the simplification.
+
+**Consequences.** The lockout is reported through `isAccountNonLocked()`, which the framework
+checks before the password, so a locked account costs no BCrypt work. That is a second reason the
+ordering matters: hammering a locked account cannot be used to burn CPU on a tenth of one.
+
+The counter is per instance and a restart forgives everyone, which on a free instance that sleeps
+after fifteen idle minutes is close to the lockout window anyway. Both facts stop being true on
+the day there are two instances, and that is the same day the map has to become a table.
+
+---
+
+## 24. `app.admin.username` promotes on every boot, and is the only way to become an administrator
+
+**Status:** accepted
+
+**Context.** There is no sign-up path to an administrator account and no screen to grant one from.
+An operator sets `app.admin.username` and restarts. It exists because the hosted instance has a
+dashboard for environment variables and no shell; anywhere with a database prompt, one SQL
+statement does the same job.
+
+Two properties make this the only privilege-escalation surface in the application, and both were
+living in a javadoc rather than anywhere someone reviewing security would look.
+
+It runs on every boot, not once. A free instance sleeps after fifteen idle minutes and cold-starts
+on close to every visit, so "on every boot" means "more or less continuously".
+
+And if the variable names an account that does not exist yet, that is not a harmless no-op that
+logs a warning. It is a standing offer. A stranger who registers that username becomes an
+administrator the next time the instance wakes, and an administrator can replace the question set
+that everyone else plays.
+
+**Decision.** A missing account stops the context, the same way a missing datasource URL does [2].
+A variable naming an account that is not there is a misconfiguration, and a boot failure the
+operator sees beats a silent escalation waiting for somebody to claim the name.
+
+**Consequences.** The ordering becomes explicit and unavoidable: register the account, then set
+the variable, then restart. That is one step more than "set it now and it will apply when they
+sign up", and that step is the entire security property.
+
+There is no demotion path. Pointing the variable at a different account promotes the new one and
+leaves the old one an administrator. Removing the variable promotes nobody and demotes nobody.
+Taking the role away is a SQL statement against the users table. That is worth fixing when there
+is a second administrator worth managing, and not worth an admin screen before then.
+
+Revisit when there is more than one administrator, at which point this stops being a boot argument
+and becomes a role assignment with an audit trail.

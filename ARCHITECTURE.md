@@ -133,6 +133,7 @@ users(id, username unique, display_name, password_hash, role, enabled, created_a
 
 rounds(id, user_id null, mode, started_at, finished_at, score, correct_count, wrong_count)
 
+-- M4, not M1. The foreign key policy is a real fork and M4 has the information [20].
 round_questions(round_id, position, question_id, served_at, answered_at,
                 answer_given, correct, points)
   primary key (round_id, position)
@@ -142,9 +143,16 @@ Four option columns rather than a child table. It matches the domain, the CSV fo
 demo, and it saves a join on the hottest read. The ceiling: a two-option or six-option question
 needs a migration. That is a fine trade for a game that has only ever had four.
 
-The `answer in (option_1..4)` check is the one constraint worth arguing for. Today an import can
-store a question whose answer matches none of its options, and it is unanswerable. The check
-makes that impossible in the one place nothing can bypass.
+The `answer in (option_1..option_4)` check is the one constraint worth arguing for, and it
+changed behaviour the day it landed. A question file whose answer matches none of its options used
+to import cleanly and produce a question nobody could answer. It is now refused.
+
+Two layers refuse it, and they are not redundant. The constraint is the guarantee: it holds
+against a future API route, an admin screen nobody has written yet, and someone at a `psql`
+prompt. The import path checks the same rule first, so the common case gets a sentence a person
+can act on instead of a `DataIntegrityViolationException` and a 500. Neither layer replaces the
+other, because the constraint cannot produce a good error message and the controller cannot cover
+callers it does not know about.
 
 `rounds.user_id` is nullable, so a guest round is stored like any other. Guests still get no score
 history; that is now a `where user_id = ?` in the query rather than a decision about what to
@@ -168,6 +176,10 @@ The three adapters stop being the datastore and become what they always were: a 
 Their interface moves from file paths to streams, which is what lets export stop writing a scratch
 file into a directory the production instance does not have [3].
 
+`round_questions` is deliberately not part of M1. A round's score is enough for the score history
+and the leaderboard, and the table's foreign key back to `questions` is a fork with no free answer
+while an import replaces the whole question set [20].
+
 A development-profile migrator reads the legacy `userData.csv`, `StatData.csv` and any
 locally-imported `QuestionData.csv` through the CSV adapter and inserts them, so a developer's
 existing accounts survive the upgrade. It does not exist under the production profile, because
@@ -180,13 +192,27 @@ the migration off themselves, which is a fair test of whether the seam was where
 says the starter "would put a login wall in front of every route". True of the auto-configured
 default, and not true once there is an explicit chain [6]. The rules:
 
-- public: `/`, `/menu`, `/play/**`, `/questions`, `/questions/export`, `/loginMenu`, `/createUser`,
-  `/guest`, static assets, `GET /api/v1/**`, `/actuator/health/**`
-- authenticated: `/stats`, `/questions/import`, writing `/api/v1/**`
-- `ROLE_ADMIN`: the rest of `/actuator/**`, question management
+- public: `/`, `/menu`, `/play/**`, `/questions`, `/questions/export`, `/loginMenu`,
+  `/loginServlet`, `/createUser`, `/guest`, `/error`, static assets. `GET /api/v1/**` and
+  `/actuator/health/**` join them at M3 and M6.
+- authenticated: `/stats`, and anything not named above, since the chain ends
+  `anyRequest().authenticated()`
+- `ROLE_ADMIN`: `/questions/import` and the question management that grows out of it, plus the
+  rest of `/actuator/**` at M6
+
+Import is an admin route rather than an ordinary signed-in one because of what it does: it
+replaces the question set that everyone else on the instance then plays. That is an
+instance-wide action wearing the clothes of a per-account one, which is exactly the kind of thing
+the README's "known limits" already flags about the shared hosted instance.
 
 A guest is an anonymous authentication, which is exactly the state `ProxyUser` modelled by hand.
 Guest play does not need a special case; it needs the absence of one.
+
+The nav is where that shows up in the views. It used to need an `authKnown` flag, set by the four
+controllers that bothered to put `authenticated` in the model, because the other four left the
+question unanswerable. The security-wrapped request answers it on every page instead, so
+`header.jspf` reads `pageContext.request.userPrincipal` and the flag is gone. Null for a guest,
+because an anonymous authentication is not a principal.
 
 CSRF comes on by default and every existing form gets a hidden token. JSP reaches it through
 `${_csrf.parameterName}` and `${_csrf.token}` with no taglib, so no dependency and nothing new on
@@ -204,19 +230,33 @@ form.
 
 Throttling is an in-memory map keyed by username, fed by `AuthenticationFailureBadCredentialsEvent`,
 with a cap on entries. One instance, so no shared store, and no cache dependency for what a
-`ConcurrentHashMap` does. If this ever runs on more than one instance the counter has to move to
-the database.
+`ConcurrentHashMap` does. Keying on the username alone means anyone who knows a username can lock
+its owner out, which is a cost taken deliberately rather than missed, and the rule for what the map
+does when it fills up is the part holding the whole thing up [23].
+
+Nobody registers as an administrator. The role is granted at boot from `app.admin.username`, which
+is the only privilege-escalation surface in the application and has the sharp edges to match [24].
 
 Behind the host's TLS terminator, `server.forward-headers-strategy=framework` needs to be set or
-Spring Security's redirects come back as `http://`. Worth confirming against the running instance
-rather than taking on faith.
+Spring Security's redirects come back as `http://`.
 
-CSP belongs in this milestone too, and there is one thing in the way of it. `fragments/head.jspf`
-ships an inline `<script>` so the theme is set before first paint, which means `script-src` cannot
-be `'self'` alone. The fix is a per-response nonce generated in a filter and read by the JSP, not
-`'unsafe-inline'`, which would give away the whole header. Worth doing here rather than later: the
-views already escape everything through `<c:out>`, and CSP is what turns that discipline from a
-convention into something the browser enforces.
+`spring.security.filter.dispatcher-types` is narrowed to `request,error,async`. Boot's default is
+all five, and a JSP view is a FORWARD to a path under `/WEB-INF/views/` that no rule permits, so
+the default turns every page in the app into a redirect to the sign-in page. This is the one
+setting in the milestone that the MockMvc suite cannot check, and it has its own decision and its
+own test class because of that [19].
+
+CSP shipped with the rest of M2. `ContentSecurityPolicyFilter` generates a nonce per response,
+puts it on the request for the JSP to read, and writes the header ahead of Spring Security's own
+header writer so the view can still reach it. `fragments/head.jspf` runs one inline script before
+first paint, and it carries the nonce rather than forcing `'unsafe-inline'`. The views already
+escaped everything through `<c:out>`; CSP is what turns that discipline from a convention into
+something the browser enforces.
+
+`script-src` is tight, and a test holds it that way: it asserts the directive contains a nonce and
+does not contain `'unsafe-inline'`, so the easy fix for a future inline script cannot be applied
+quietly. `style-src` is the one place the policy is not tight, and that is a forced concession
+with a stated reason rather than an oversight [21].
 
 ### M3: REST API
 
@@ -240,6 +280,7 @@ how you get a 500 that says `WEB-INF/views/{"id":1}.jsp`.
 
 Categories, difficulty, a per-question timer, streaks, a leaderboard.
 
+This is where `round_questions` arrives, along with the foreign key decision M1 left open [20].
 The timer is the part with architectural content. `round_questions.served_at` is written when the
 question is handed out, and elapsed time is computed server-side on submit from that column plus a
 grace window for network latency. Nothing the client sends about time is trusted, which is the
@@ -334,10 +375,6 @@ Genuinely still open, as opposed to tidying:
 
 - Contrast ratios are chosen, not measured. The tokens look deliberate and nothing has put a
   checker over them in both themes.
-- `header.jspf` only renders the sign-in or sign-out item when an `authKnown` flag is set, because
-  only four of the eight views put `authenticated` in the model. That flag exists because
-  authentication state is not available to every view, which is exactly what M2 fixes. Once the
-  security context is the source of truth the nav can ask directly and `authKnown` goes.
 - `feedback.jspf` marks the verdict `role="status"`. A live region that already holds content when
   the page loads is not reliably announced as a change, so this wants checking against a real
   screen reader rather than trusting the attribute.
