@@ -113,6 +113,9 @@
                                 <argument>-d</argument>
                                 <argument>${project.build.outputDirectory}</argument>
                                 <argument>-compile</argument>
+                                <!-- Without this JspC reports the error, drops the page from the
+                                     output and still exits 0. -->
+                                <argument>-die</argument>
                             </arguments>
                         </configuration>
                     </execution>
