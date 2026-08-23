@@ -1,7 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <c:set var="pageTitle" value="Main menu - Trivial Trivia"/>
-<c:set var="authKnown" value="true"/>
 <!DOCTYPE html>
 <html lang="en">
 <head>

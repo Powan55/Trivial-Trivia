@@ -4,6 +4,7 @@ import com.example.Persistence.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -17,7 +18,7 @@ class CreateUserTest {
     private CreateUser createUser;
 
     @Autowired
-    private Login login;
+    private PlayerDetailsService players;
 
     @Autowired
     private UserRepository users;
@@ -26,9 +27,9 @@ class CreateUserTest {
     private PasswordEncoder encoder;
 
     @Test
-    void writesTheUserWhereLoginLooksForIt() {
+    void writesTheUserWhereSignInLooksForIt() {
         assertThat(createUser.makeUser(new String[] {"Ada Lovelace", "make_ada", "correct horse"})).isTrue();
-        assertThat(login.authenticate("make_ada", "correct horse")).isNotNull();
+        assertThat(signsIn("make_ada", "correct horse")).isTrue();
     }
 
     @Test
@@ -44,8 +45,8 @@ class CreateUserTest {
         assertThat(createUser.makeUser(new String[] {"Ada Lovelace", "make_taken", "one"})).isTrue();
         assertThat(createUser.makeUser(new String[] {"Ada Byron", "make_taken", "two"})).isFalse();
 
-        assertThat(login.authenticate("make_taken", "one")).isNotNull();
-        assertThat(login.authenticate("make_taken", "two")).isNull();
+        assertThat(signsIn("make_taken", "one")).isTrue();
+        assertThat(signsIn("make_taken", "two")).isFalse();
     }
 
     @Test
@@ -53,8 +54,8 @@ class CreateUserTest {
         createUser.makeUser(new String[] {"Ada Lovelace", "make_ada2", "one"});
         createUser.makeUser(new String[] {"Grace Hopper", "make_grace", "two"});
 
-        assertThat(login.authenticate("make_ada2", "one")).isNotNull();
-        assertThat(login.authenticate("make_grace", "two")).isNotNull();
+        assertThat(signsIn("make_ada2", "one")).isTrue();
+        assertThat(signsIn("make_grace", "two")).isTrue();
     }
 
     @Test
@@ -86,5 +87,14 @@ class CreateUserTest {
     @Test
     void theEncoderIsBcryptAndNotADelegatingOne() {
         assertThat(encoder.encode("correct horse")).startsWith("$2a$");
+    }
+
+    /** What the framework will do with the row: load it, then match the password against it. */
+    private boolean signsIn(String username, String password) {
+        try {
+            return encoder.matches(password, players.loadUserByUsername(username).getPassword());
+        } catch (UsernameNotFoundException unknown) {
+            return false;
+        }
     }
 }

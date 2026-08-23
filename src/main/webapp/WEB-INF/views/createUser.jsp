@@ -22,6 +22,7 @@
 
             <form action="${pageContext.request.contextPath}/createUser" method="post"
                   <c:if test="${not empty error}">aria-describedby="form-error"</c:if>>
+                <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
                 <div class="field">
                     <label for="name">Name</label>
                     <input type="text" id="name" name="name" maxlength="60"

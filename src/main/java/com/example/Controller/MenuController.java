@@ -1,6 +1,6 @@
 package com.example.Controller;
 
-import com.example.Authentication.User;
+import com.example.Authentication.CurrentPlayer;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class MenuController {
 
-    private final User user;
+    private final CurrentPlayer user;
 
-    public MenuController(User user) {
+    public MenuController(CurrentPlayer user) {
         this.user = user;
     }
 

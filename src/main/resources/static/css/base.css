@@ -238,7 +238,8 @@ a:hover {
     padding: 0;
 }
 
-.site-nav a {
+.site-nav a,
+.site-nav .nav-signout button {
     display: block;
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-sm);
@@ -248,9 +249,21 @@ a:hover {
     font-size: var(--text-sm);
 }
 
-.site-nav a:hover {
+.site-nav a:hover,
+.site-nav .nav-signout button:hover {
     background: var(--color-surface-2);
     color: var(--color-text);
+}
+
+/* Signing out is a POST, so it is a button. The rules above give it the nav-link look; these
+   undo the chrome a button brings with it. */
+.site-nav .nav-signout button {
+    font-family: inherit;
+    line-height: inherit;
+    text-align: left;
+    border: 0;
+    background: none;
+    cursor: pointer;
 }
 
 .site-nav a[aria-current="page"] {

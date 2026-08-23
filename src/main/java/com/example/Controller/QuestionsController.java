@@ -6,7 +6,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
 
-import com.example.Authentication.User;
+import com.example.Authentication.CurrentPlayer;
 import com.example.Database.RowFormats;
 import com.example.Persistence.QuestionRepository;
 import org.springframework.core.io.ByteArrayResource;
@@ -22,6 +22,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Exporting the question set and importing a replacement, as CSV, JSON or XML.
+ *
+ * <p>Export is open to anyone. Import replaces the set for every player, so the filter chain
+ * keeps it to {@code ROLE_ADMIN} and this class never checks for itself.</p>
  */
 @Controller
 public class QuestionsController {
@@ -30,9 +33,9 @@ public class QuestionsController {
 
     private final RowFormats formats;
     private final QuestionRepository questions;
-    private final User user;
+    private final CurrentPlayer user;
 
-    public QuestionsController(RowFormats formats, QuestionRepository questions, User user) {
+    public QuestionsController(RowFormats formats, QuestionRepository questions, CurrentPlayer user) {
         this.formats = formats;
         this.questions = questions;
         this.user = user;
@@ -40,8 +43,7 @@ public class QuestionsController {
 
     @GetMapping("/questions")
     public String showPage(Model model) {
-        model.addAttribute("player", user.getUserInfo());
-        model.addAttribute("authenticated", user.isAuthenticated());
+        model.addAttribute("admin", user.isAdmin());
         model.addAttribute("count", questions.count());
         model.addAttribute("formats", RowFormats.FORMATS);
         return "questions";
@@ -65,10 +67,6 @@ public class QuestionsController {
 
     @PostMapping("/questions/import")
     public String importQuestions(@RequestParam("file") MultipartFile file, Model model) throws IOException {
-        if (!user.isAuthenticated()) {
-            model.addAttribute("error", "Sign in to replace the question set.");
-            return showPage(model);
-        }
         Optional<String> problem = replaceQuestions(file);
         model.addAttribute(problem.isPresent() ? "error" : "message",
                 problem.orElse("Question set replaced."));

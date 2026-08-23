@@ -3,7 +3,7 @@
 <title><c:out value="${pageTitle}"/></title>
 <link rel="icon" href="${pageContext.request.contextPath}/images/Trivial-Trivia.jpg">
 <link rel="stylesheet" href="${pageContext.request.contextPath}/css/base.css">
-<script>
+<script nonce="${cspNonce}">
     // Ahead of first paint, so a dark-theme reader does not get a white flash.
     (function () {
         var stored = null;

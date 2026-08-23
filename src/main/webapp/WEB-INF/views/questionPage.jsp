@@ -31,6 +31,7 @@
             <h1 id="question-heading" class="quiz-question"><c:out value="${question.question}"/></h1>
 
             <form action="${pageContext.request.contextPath}/play/answer" method="post">
+                <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
                 <fieldset class="options" aria-labelledby="question-heading">
                     <c:forEach var="index" begin="1" end="4">
                         <div class="option">

@@ -2,7 +2,6 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <c:set var="pageTitle" value="Your scores - Trivial Trivia"/>
-<c:set var="authKnown" value="true"/>
 <c:set var="navCurrent" value="stats"/>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,17 +20,6 @@
         </div>
 
         <c:choose>
-            <c:when test="${not authenticated}">
-                <div class="card empty-state">
-                    <h2>Guest rounds are not kept</h2>
-                    <p class="muted">Scores are stored against a username, so there is nothing to
-                        show for a guest.</p>
-                    <div class="btn-row">
-                        <a class="btn btn-primary" href="${pageContext.request.contextPath}/loginMenu">Sign in</a>
-                        <a class="btn" href="${pageContext.request.contextPath}/createUser">Create an account</a>
-                    </div>
-                </div>
-            </c:when>
             <c:when test="${empty scores}">
                 <div class="card empty-state">
                     <h2>No finished rounds yet</h2>

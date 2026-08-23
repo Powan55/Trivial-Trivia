@@ -53,11 +53,12 @@
             <artifactId>jakarta.servlet.jsp.jstl</artifactId>
         </dependency>
 
-        <!-- BCrypt only. The full security starter would put a login wall in front of every
-             route, which is not what this app does. -->
+        <!-- The starter's login wall is the auto-configured default, not the starter: one
+             explicit SecurityFilterChain replaces it, and most routes here stay public. Absorbs
+             spring-security-crypto, which is why BCrypt is no longer a direct dependency. -->
         <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-crypto</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
         <!-- JdbcClient and a connection pool. Not JPA: Hibernate measured +26.3 MB RSS and
@@ -94,6 +95,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
 

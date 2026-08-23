@@ -2,7 +2,7 @@ package com.example.Controller;
 
 import java.util.List;
 
-import com.example.Authentication.User;
+import com.example.Authentication.CurrentPlayer;
 import com.example.Persistence.RoundRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,9 +15,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class StatsController {
 
     private final RoundRepository rounds;
-    private final User user;
+    private final CurrentPlayer user;
 
-    public StatsController(RoundRepository rounds, User user) {
+    public StatsController(RoundRepository rounds, CurrentPlayer user) {
         this.rounds = rounds;
         this.user = user;
     }
@@ -25,7 +25,6 @@ public class StatsController {
     @GetMapping("/stats")
     public String showStats(Model model) {
         model.addAttribute("player", user.getUserInfo());
-        model.addAttribute("authenticated", user.isAuthenticated());
 
         List<Integer> scores = rounds.scoresFor(user.getUsername());
         model.addAttribute("scores", scores);

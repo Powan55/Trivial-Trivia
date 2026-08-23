@@ -2,7 +2,7 @@ package com.example.Controller;
 
 import java.util.Map;
 
-import com.example.Authentication.User;
+import com.example.Authentication.CurrentPlayer;
 import com.example.Game.Question;
 import com.example.Persistence.RoundRepository;
 import com.example.Service.GameService;
@@ -25,9 +25,9 @@ public class PlayController {
 
     private final GameService gameService;
     private final RoundRepository rounds;
-    private final User user;
+    private final CurrentPlayer user;
 
-    public PlayController(GameService gameService, RoundRepository rounds, User user) {
+    public PlayController(GameService gameService, RoundRepository rounds, CurrentPlayer user) {
         this.gameService = gameService;
         this.rounds = rounds;
         this.user = user;

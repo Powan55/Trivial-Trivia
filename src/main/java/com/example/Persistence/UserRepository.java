@@ -19,7 +19,8 @@ import org.springframework.stereotype.Repository;
 public class UserRepository {
 
     /** A stored user, minus nothing: the hash is here because sign-in needs it. */
-    public record StoredUser(long id, String username, String displayName, String passwordHash) {
+    public record StoredUser(long id, String username, String displayName, String passwordHash,
+                            String role, boolean enabled) {
     }
 
     private final JdbcClient jdbc;
@@ -47,14 +48,25 @@ public class UserRepository {
             return Optional.empty();
         }
         return jdbc.sql("""
-                select id, username, display_name, password_hash
+                select id, username, display_name, password_hash, role, enabled
                 from users
                 where username = ?
                 """)
                 .param(username)
                 .query((rs, row) -> new StoredUser(rs.getLong("id"), rs.getString("username"),
-                        rs.getString("display_name"), rs.getString("password_hash")))
+                        rs.getString("display_name"), rs.getString("password_hash"),
+                        rs.getString("role"), rs.getBoolean("enabled")))
                 .optional();
+    }
+
+    /** @return false if there is no such account, in which case nothing changed */
+    public boolean promoteToAdmin(String username) {
+        if (username == null || username.isBlank()) {
+            return false;
+        }
+        return jdbc.sql("update users set role = 'ROLE_ADMIN' where username = ?")
+                .param(username)
+                .update() == 1;
     }
 
     public long count() {

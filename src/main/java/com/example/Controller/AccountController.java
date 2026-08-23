@@ -3,10 +3,14 @@ package com.example.Controller;
 import java.util.Optional;
 
 import com.example.Authentication.CreateUser;
-import com.example.Authentication.ProxyUser;
-import com.example.Authentication.RealUser;
+import com.example.Authentication.PlayerPrincipal;
 import com.example.Authentication.Registration;
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,17 +18,19 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * Registration, the guest path, and signing out.
+ * Registration and the guest path.
+ *
+ * <p>Signing out is the framework's, at {@code POST /logout}.</p>
  */
 @Controller
 public class AccountController {
 
     private final CreateUser createUser;
-    private final ProxyUser user;
+    private final SecurityContextRepository contexts;
 
-    public AccountController(CreateUser createUser, ProxyUser user) {
+    public AccountController(CreateUser createUser, SecurityContextRepository contexts) {
         this.createUser = createUser;
-        this.user = user;
+        this.contexts = contexts;
     }
 
     @GetMapping("/createUser")
@@ -36,7 +42,9 @@ public class AccountController {
     public String register(@RequestParam(defaultValue = "") String name,
                            @RequestParam(defaultValue = "") String username,
                            @RequestParam(defaultValue = "") String password,
-                           Model model) {
+                           Model model,
+                           HttpServletRequest request,
+                           HttpServletResponse response) {
         Optional<String> problem = Registration.validate(name, username, password);
         if (problem.isEmpty() && !createUser.makeUser(new String[] {name, username, password})) {
             problem = Optional.of("That username is taken.");
@@ -48,21 +56,25 @@ public class AccountController {
             model.addAttribute("username", username);
             return "createUser";
         }
-        user.signIn(new RealUser(name, username));
+        signIn(PlayerPrincipal.newlyRegistered(username, name), request, response);
         return "redirect:/menu";
     }
 
-    /** Playing without an account. Clears any signed-in user rather than inheriting one. */
+    /** Playing without an account. Anonymous is the state a guest is already in. */
     @GetMapping("/guest")
     public String continueAsGuest() {
-        user.signOut();
         return "redirect:/menu";
     }
 
-    @GetMapping("/logout")
-    public String logout(HttpSession session) {
-        user.signOut();
-        session.invalidate();
-        return "redirect:/loginMenu";
+    /** The same session fixation and storage the form login path gets, done by hand. */
+    private void signIn(PlayerPrincipal player, HttpServletRequest request, HttpServletResponse response) {
+        if (request.getSession(false) != null) {
+            request.changeSessionId();
+        }
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(UsernamePasswordAuthenticationToken
+                .authenticated(player, null, player.getAuthorities()));
+        SecurityContextHolder.setContext(context);
+        contexts.saveContext(context, request, response);
     }
 }

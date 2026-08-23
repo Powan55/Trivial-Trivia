@@ -2,7 +2,6 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <c:set var="pageTitle" value="Game over - Trivial Trivia"/>
-<c:set var="authKnown" value="true"/>
 <c:set var="answered" value="${right + wrong}"/>
 <!DOCTYPE html>
 <html lang="en">

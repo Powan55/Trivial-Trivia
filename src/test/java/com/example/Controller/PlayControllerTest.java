@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
@@ -61,7 +62,7 @@ class PlayControllerTest {
         mvc.perform(get("/play").session(session));
 
         while (question(session) != null) {
-            mvc.perform(post("/play/answer").session(session).param("answer", "no idea"));
+            mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "no idea"));
         }
 
         mvc.perform(get("/play/question").session(session))
@@ -74,9 +75,9 @@ class PlayControllerTest {
         mvc.perform(get("/play").session(session));
 
         Question first = question(session);
-        mvc.perform(post("/play/answer").session(session).param("answer", first.getAnswer()));
+        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", first.getAnswer()));
         Question second = question(session);
-        mvc.perform(post("/play/answer").session(session).param("answer", "definitely wrong"));
+        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "definitely wrong"));
 
         assertThat(second).isNotNull();
         mvc.perform(get("/play/end").session(session))
@@ -97,7 +98,7 @@ class PlayControllerTest {
                 .andExpect(model().attribute("totalQuestions", SHIPPED_QUESTIONS));
 
         for (int expected = 2; expected <= SHIPPED_QUESTIONS; expected++) {
-            mvc.perform(post("/play/answer").session(session).param("answer", "no idea"));
+            mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "no idea"));
             mvc.perform(get("/play/question").session(session))
                     .andExpect(model().attribute("questionNumber", expected))
                     .andExpect(model().attribute("totalQuestions", SHIPPED_QUESTIONS));
@@ -110,7 +111,7 @@ class PlayControllerTest {
         mvc.perform(get("/play").session(session));
         Question asked = question(session);
 
-        mvc.perform(post("/play/answer").session(session).param("answer", asked.getAnswer()))
+        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", asked.getAnswer()))
                 .andExpect(flash().attribute("answerCorrect", true))
                 .andExpect(flash().attributeCount(1));
     }
@@ -121,7 +122,7 @@ class PlayControllerTest {
         mvc.perform(get("/play").session(session));
         Question asked = question(session);
 
-        mvc.perform(post("/play/answer").session(session).param("answer", "definitely wrong"))
+        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "definitely wrong"))
                 .andExpect(flash().attribute("answerCorrect", false))
                 .andExpect(flash().attribute("correctAnswer", asked.getAnswer()));
     }
@@ -131,7 +132,7 @@ class PlayControllerTest {
         MockHttpSession session = new MockHttpSession();
         mvc.perform(get("/play").session(session));
         mvc.perform(get("/play/question").session(session));
-        mvc.perform(post("/play/answer").session(session).param("answer", "definitely wrong"));
+        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "definitely wrong"));
 
         mvc.perform(get("/play/question").session(session))
                 .andExpect(model().attribute("answerCorrect", false))
@@ -188,7 +189,7 @@ class PlayControllerTest {
     /** Answering before a question has been handed out scores nothing and says nothing. */
     @Test
     void anAnswerWithNoQuestionInFlightProducesNoFeedback() throws Exception {
-        mvc.perform(post("/play/answer").session(new MockHttpSession()).param("answer", "Paris"))
+        mvc.perform(post("/play/answer").session(new MockHttpSession()).with(csrf()).param("answer", "Paris"))
                 .andExpect(redirectedUrl("/play/question"))
                 .andExpect(flash().attributeCount(0));
     }
@@ -208,8 +209,8 @@ class PlayControllerTest {
         Question bobSees = question(bob);
         assertThat(bobSees.getQuestion()).isEqualTo(aliceSees.getQuestion());
 
-        mvc.perform(post("/play/answer").session(alice).param("answer", aliceSees.getAnswer()));
-        mvc.perform(post("/play/answer").session(bob).param("answer", "definitely wrong"));
+        mvc.perform(post("/play/answer").session(alice).with(csrf()).param("answer", aliceSees.getAnswer()));
+        mvc.perform(post("/play/answer").session(bob).with(csrf()).param("answer", "definitely wrong"));
 
         mvc.perform(get("/play/end").session(alice)).andExpect(model().attribute("score", 10));
         mvc.perform(get("/play/end").session(bob)).andExpect(model().attribute("score", 0));
@@ -222,7 +223,7 @@ class PlayControllerTest {
         for (int i = 0; i < SHIPPED_QUESTIONS; i++) {
             asked = question(session);
             String answer = correctly ? asked.getAnswer() : "definitely wrong";
-            mvc.perform(post("/play/answer").session(session).param("answer", answer));
+            mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", answer));
         }
         return asked;
     }

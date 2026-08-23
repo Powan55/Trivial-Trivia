@@ -1,52 +1,43 @@
 package com.example.Controller;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import com.example.Authentication.Login;
-import com.example.Authentication.ProxyUser;
-import com.example.Authentication.RealUser;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.web.WebAttributes;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * Serves the sign-in page and handles the sign-in form.
+ * The sign-in page. The form itself is posted to {@code /loginServlet}, which the security filter
+ * chain takes.
  */
 @Controller
 public class LoginController {
 
-    private static final Logger logger = Logger.getLogger(LoginController.class.getName());
-
-    private final Login login;
-    private final ProxyUser user;
-
-    public LoginController(Login login, ProxyUser user) {
-        this.login = login;
-        this.user = user;
-    }
+    /** One message for both cases: naming which half was wrong tells an attacker whether the
+     *  username exists. */
+    public static final String REJECTED = "That username and password did not match.";
+    public static final String LOCKED_OUT = "Too many sign-in attempts. Try again in a few minutes.";
 
     @GetMapping("/loginMenu")
-    public String showMenu() {
+    public String showMenu(@RequestParam(required = false) String error, Model model,
+                           HttpServletRequest request) {
+        if (error != null) {
+            model.addAttribute("error", lastFailureWasALockout(request) ? LOCKED_OUT : REJECTED);
+        }
         return "loginmenu";
     }
 
-    @PostMapping("/loginServlet")
-    public String signIn(@RequestParam(defaultValue = "") String username,
-                         @RequestParam(defaultValue = "") String password,
-                         Model model) {
-        RealUser authenticated = login.authenticate(username, password);
-        if (authenticated == null) {
-            logger.log(Level.INFO, "Sign-in rejected");
-            // One message for both cases: naming which half was wrong tells an attacker
-            // whether the username exists.
-            model.addAttribute("error", "That username and password did not match.");
-            model.addAttribute("username", username);
-            return "loginmenu";
+    private static boolean lastFailureWasALockout(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return false;
         }
-        user.signIn(authenticated);
-        return "redirect:/menu";
+        Object failure = session.getAttribute(WebAttributes.AUTHENTICATION_EXCEPTION);
+        // Read once, so a later visit to the page does not repeat a message about an old attempt.
+        session.removeAttribute(WebAttributes.AUTHENTICATION_EXCEPTION);
+        return failure instanceof LockedException;
     }
 }

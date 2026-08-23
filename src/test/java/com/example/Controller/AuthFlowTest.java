@@ -11,11 +11,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 /**
  * Register, sign out, sign back in, play a round, read it back off the scores page.
@@ -33,7 +33,7 @@ class AuthFlowTest {
         register("flow_one", "Ada Lovelace");
 
         MockHttpSession session = new MockHttpSession();
-        mvc.perform(post("/loginServlet").session(session)
+        mvc.perform(post("/loginServlet").session(session).with(csrf())
                         .param("username", "flow_one").param("password", "correct horse"))
                 .andExpect(redirectedUrl("/menu"));
 
@@ -42,30 +42,44 @@ class AuthFlowTest {
     }
 
     @Test
-    void theWrongPasswordStaysOnTheSignInPageWithAMessage() throws Exception {
+    void signingOutAndBackInWorks() throws Exception {
+        MockHttpSession session = register("flow_again", "Ada Lovelace");
+        mvc.perform(post("/logout").session(session).with(csrf())).andExpect(redirectedUrl("/loginMenu"));
+
+        MockHttpSession second = new MockHttpSession();
+        mvc.perform(post("/loginServlet").session(second).with(csrf())
+                        .param("username", "flow_again").param("password", "correct horse"))
+                .andExpect(redirectedUrl("/menu"));
+        mvc.perform(get("/menu").session(second))
+                .andExpect(model().attribute("authenticated", true));
+    }
+
+    @Test
+    void theWrongPasswordGoesBackToTheSignInPageWithAMessage() throws Exception {
         register("flow_two", "Ada Lovelace");
 
         MockHttpSession session = new MockHttpSession();
-        mvc.perform(post("/loginServlet").session(session)
+        mvc.perform(post("/loginServlet").session(session).with(csrf())
                         .param("username", "flow_two").param("password", "wrong password"))
-                .andExpect(view().name("loginmenu"))
-                .andExpect(model().attributeExists("error"));
+                .andExpect(redirectedUrl("/loginMenu?error"));
 
+        mvc.perform(get("/loginMenu").session(session).param("error", ""))
+                .andExpect(model().attribute("error", LoginController.REJECTED));
         mvc.perform(get("/menu").session(session))
                 .andExpect(model().attribute("authenticated", false));
     }
 
     @Test
     void anUnknownUserGetsTheSameMessageAsABadPassword() throws Exception {
-        MvcResult unknown = mvc.perform(post("/loginServlet")
+        MvcResult unknown = mvc.perform(post("/loginServlet").with(csrf())
                 .param("username", "nobody_here").param("password", "correct horse")).andReturn();
 
         register("flow_three", "Ada Lovelace");
-        MvcResult badPassword = mvc.perform(post("/loginServlet")
+        MvcResult badPassword = mvc.perform(post("/loginServlet").with(csrf())
                 .param("username", "flow_three").param("password", "wrong password")).andReturn();
 
-        assertThat(unknown.getModelAndView().getModel().get("error"))
-                .isEqualTo(badPassword.getModelAndView().getModel().get("error"));
+        assertThat(unknown.getResponse().getRedirectedUrl())
+                .isEqualTo(badPassword.getResponse().getRedirectedUrl());
     }
 
     @Test
@@ -74,11 +88,10 @@ class AuthFlowTest {
 
         mvc.perform(get("/play").session(session));
         Question first = question(session);
-        mvc.perform(post("/play/answer").session(session).param("answer", first.getAnswer()));
+        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", first.getAnswer()));
         mvc.perform(get("/play/end").session(session)).andExpect(model().attribute("score", 10));
 
         mvc.perform(get("/stats").session(session))
-                .andExpect(model().attribute("authenticated", true))
                 .andExpect(model().attribute("best", 10))
                 .andExpect(model().attribute("scores", org.hamcrest.Matchers.hasItem(10)));
     }
@@ -89,7 +102,7 @@ class AuthFlowTest {
 
         mvc.perform(get("/play").session(session));
         Question first = question(session);
-        mvc.perform(post("/play/answer").session(session).param("answer", first.getAnswer()));
+        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", first.getAnswer()));
         mvc.perform(get("/play/end").session(session));
         mvc.perform(get("/play/end").session(session));
         mvc.perform(get("/play/end").session(session));
@@ -104,7 +117,7 @@ class AuthFlowTest {
 
         mvc.perform(get("/play").session(session));
         while (question(session) != null) {
-            mvc.perform(post("/play/answer").session(session).param("answer", "definitely wrong"));
+            mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "definitely wrong"));
         }
 
         mvc.perform(get("/play/end").session(session))
@@ -118,23 +131,22 @@ class AuthFlowTest {
     }
 
     @Test
-    void aGuestGetsNoScoreHistory() throws Exception {
+    void aGuestRoundIsNotStoredAndTheScoresPageAsksThemToSignIn() throws Exception {
         MockHttpSession session = new MockHttpSession();
         mvc.perform(get("/guest").session(session));
 
         mvc.perform(get("/play").session(session));
         Question first = question(session);
-        mvc.perform(post("/play/answer").session(session).param("answer", first.getAnswer()));
+        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", first.getAnswer()));
         mvc.perform(get("/play/end").session(session)).andExpect(model().attribute("authenticated", false));
 
         mvc.perform(get("/stats").session(session))
-                .andExpect(model().attribute("authenticated", false))
-                .andExpect(model().attribute("scores", org.hamcrest.Matchers.empty()));
+                .andExpect(redirectedUrl("http://localhost/loginMenu"));
     }
 
     private MockHttpSession register(String username, String name) throws Exception {
         MockHttpSession session = new MockHttpSession();
-        mvc.perform(post("/createUser").session(session)
+        mvc.perform(post("/createUser").session(session).with(csrf())
                         .param("name", name).param("username", username).param("password", "correct horse"))
                 .andExpect(redirectedUrl("/menu"));
         return session;

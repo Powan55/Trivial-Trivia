@@ -2,7 +2,6 @@
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <c:set var="pageTitle" value="Questions - Trivial Trivia"/>
-<c:set var="authKnown" value="true"/>
 <c:set var="navCurrent" value="questions"/>
 <!DOCTYPE html>
 <html lang="en">
@@ -46,11 +45,12 @@
             <section class="card" aria-labelledby="import-heading">
                 <h2 id="import-heading">Import</h2>
                 <c:choose>
-                    <c:when test="${authenticated}">
+                    <c:when test="${admin}">
                         <p class="muted">Replaces the whole question set. Keep the header row.</p>
                         <form action="${pageContext.request.contextPath}/questions/import"
                               method="post" enctype="multipart/form-data"
                               <c:if test="${not empty error}">aria-describedby="form-error"</c:if>>
+                            <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
                             <div class="field">
                                 <label for="file">Question file</label>
                                 <input type="file" id="file" name="file" accept=".csv,.json,.xml"
@@ -63,10 +63,12 @@
                     </c:when>
                     <c:otherwise>
                         <p class="muted">Replacing the question set changes it for everyone, so it
-                            needs an account.</p>
-                        <div class="btn-row">
-                            <a class="btn btn-primary" href="${pageContext.request.contextPath}/loginMenu">Sign in</a>
-                        </div>
+                            needs an administrator account.</p>
+                        <c:if test="${empty pageContext.request.userPrincipal}">
+                            <div class="btn-row">
+                                <a class="btn btn-primary" href="${pageContext.request.contextPath}/loginMenu">Sign in</a>
+                            </div>
+                        </c:if>
                     </c:otherwise>
                 </c:choose>
             </section>
