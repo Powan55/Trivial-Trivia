@@ -24,6 +24,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * The same rows as XML:
@@ -54,7 +55,10 @@ public class XMLAdapter implements RowFormat {
                 data.add(cellsOf(rows.item(i)));
             }
         } catch (IOException | SAXException | ParserConfigurationException e) {
-            logger.log(Level.WARNING, "Could not read the uploaded XML", e);
+            // Message only: the upload path is reachable by anyone who can sign in, and a
+            // stack trace per malformed file is a log an attacker gets to write.
+            logger.warning("Could not read the uploaded XML: " + e.getMessage());
+            logger.log(Level.FINE, "The upload that would not parse", e);
             return new ArrayList<>();
         }
         return data;
@@ -102,7 +106,13 @@ public class XMLAdapter implements RowFormat {
         factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
         factory.setXIncludeAware(false);
         factory.setExpandEntityReferences(false);
-        return factory.newDocumentBuilder();
+
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        // With no handler set, the parser installs one that prints every fatal error to stderr,
+        // so a malformed upload writes a line the caller never asked for. DefaultHandler rethrows
+        // it instead, which is what the catch above is already there for.
+        builder.setErrorHandler(new DefaultHandler());
+        return builder;
     }
 
     private static Transformer transformer() throws TransformerException {

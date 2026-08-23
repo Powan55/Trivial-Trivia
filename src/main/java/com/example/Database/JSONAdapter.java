@@ -34,7 +34,10 @@ public class JSONAdapter implements RowFormat {
         try {
             return new ArrayList<>(Arrays.asList(mapper.readValue(in, String[][].class)));
         } catch (IOException e) {
-            logger.log(Level.WARNING, "Could not read the uploaded JSON", e);
+            // Message only: the upload path is reachable by anyone who can sign in, and a
+            // stack trace per malformed file is a log an attacker gets to write.
+            logger.warning("Could not read the uploaded JSON: " + e.getMessage());
+            logger.log(Level.FINE, "The upload that would not parse", e);
             return new ArrayList<>();
         }
     }

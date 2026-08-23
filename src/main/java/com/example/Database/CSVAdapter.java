@@ -33,7 +33,10 @@ public class CSVAdapter implements RowFormat {
                 data.add(line);
             }
         } catch (IOException | CsvValidationException e) {
-            logger.log(Level.WARNING, "Could not read the uploaded CSV", e);
+            // Message only: the upload path is reachable by anyone who can sign in, and a
+            // stack trace per malformed file is a log an attacker gets to write.
+            logger.warning("Could not read the uploaded CSV: " + e.getMessage());
+            logger.log(Level.FINE, "The upload that would not parse", e);
             return new ArrayList<>();
         }
         return data;
