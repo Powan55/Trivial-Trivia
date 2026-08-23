@@ -1,0 +1,35 @@
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+    <div class="shell site-header-inner">
+        <a class="brand" href="${pageContext.request.contextPath}/">
+            <img class="brand-mark" src="${pageContext.request.contextPath}/images/Trivial-Trivia.jpg"
+                 alt="" width="32" height="32">
+            <span>Trivial Trivia</span>
+        </a>
+        <nav class="site-nav" aria-label="Main">
+            <ul>
+                <li><a href="${pageContext.request.contextPath}/play"<c:if test="${navCurrent eq 'play'}"> aria-current="page"</c:if>>Play</a></li>
+                <li><a href="${pageContext.request.contextPath}/stats"<c:if test="${navCurrent eq 'stats'}"> aria-current="page"</c:if>>Scores</a></li>
+                <li><a href="${pageContext.request.contextPath}/questions"<c:if test="${navCurrent eq 'questions'}"> aria-current="page"</c:if>>Questions</a></li>
+                <%-- The wrapped request answers this on every page, so no view has to pass a
+                     flag down and no controller has to remember to set one. Null for a guest,
+                     because an anonymous authentication is not a principal. --%>
+                <c:choose>
+                    <c:when test="${not empty pageContext.request.userPrincipal}">
+                        <li><form class="nav-signout" action="${pageContext.request.contextPath}/logout" method="post">
+                            <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
+                            <button type="submit">Sign out</button>
+                        </form></li>
+                    </c:when>
+                    <c:otherwise>
+                        <li><a href="${pageContext.request.contextPath}/loginMenu">Sign in</a></li>
+                    </c:otherwise>
+                </c:choose>
+            </ul>
+        </nav>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false" hidden>
+            <span class="theme-toggle-icon" aria-hidden="true"></span>
+            <span>Dark mode</span>
+        </button>
+    </div>
+</header>

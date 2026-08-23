@@ -1,0 +1,22 @@
+# One free web service, built from the Dockerfile and redeployed on every push to main.
+#
+# Free instances sleep after 15 minutes idle and cold-start on the next request; the demo page
+# warns about that wait. There is no disk, so the database cannot live in the container.
+services:
+  - type: web
+    name: trivial-trivia
+    runtime: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      # Without this the app starts on the dev profile, which means an embedded database on a
+      # filesystem that is thrown away on every restart. It refuses to start under prod unless
+      # DATABASE_URL is set, which is the point.
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      # Set in the dashboard, never here. Render hands out a postgres:// URI, not a JDBC URL;
+      # the app translates it.
+      - key: DATABASE_URL
+        sync: false

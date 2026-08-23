@@ -1,10 +1,12 @@
 package com.example.Database;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -21,39 +23,31 @@ import com.fasterxml.jackson.databind.SerializationFeature;
  * <p>Rows, not objects. The version of this that never shipped invented keys called
  * {@code column0}, {@code column1} and so on, which is a worse CSV rather than better JSON.</p>
  */
-public class JSONAdapter implements Database {
+public class JSONAdapter implements RowFormat {
 
     private static final Logger logger = Logger.getLogger(JSONAdapter.class.getName());
 
-    private final DataDirectory dataDirectory;
     private final ObjectMapper mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
-    public JSONAdapter(DataDirectory dataDirectory) {
-        this.dataDirectory = dataDirectory;
-    }
-
     @Override
-    public ArrayList<String[]> readFile(String fileName) {
-        Path path = dataDirectory.resolve(fileName);
-        if (!Files.exists(path)) {
-            logger.warning("No such data file, returning nothing: " + path);
-            return new ArrayList<>();
-        }
+    public List<String[]> read(InputStream in) {
         try {
-            return new ArrayList<>(Arrays.asList(mapper.readValue(path.toFile(), String[][].class)));
+            return new ArrayList<>(Arrays.asList(mapper.readValue(in, String[][].class)));
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Error reading " + path, e);
+            // Message only: the upload path is reachable by anyone who can sign in, and a
+            // stack trace per malformed file is a log an attacker gets to write.
+            logger.warning("Could not read the uploaded JSON: " + e.getMessage());
+            logger.log(Level.FINE, "The upload that would not parse", e);
             return new ArrayList<>();
         }
     }
 
     @Override
-    public void writeFile(String fileName, ArrayList<String[]> data) {
-        Path path = dataDirectory.resolve(fileName);
+    public void write(OutputStream out, List<String[]> rows) {
         try {
-            mapper.writeValue(path.toFile(), data);
+            mapper.writeValue(out, rows);
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Error writing " + path, e);
+            throw new UncheckedIOException("Could not write JSON", e);
         }
     }
 }

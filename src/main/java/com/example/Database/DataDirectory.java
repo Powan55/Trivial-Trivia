@@ -1,7 +1,6 @@
 package com.example.Database;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -9,23 +8,19 @@ import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 /**
- * Resolves the writable directory the application keeps its data in, and seeds it on first run.
+ * Resolves the writable directory the application keeps local state in.
  *
- * <p>The application used to read through {@code ClassPathResource} and write through a raw
- * {@code FileOutputStream} relative to the working directory, so a read and a write of the same
- * logical file went to two different places. Everything now goes through here.</p>
+ * <p>It used to seed three CSV files here and treat them as the datastore. The datastore is now a
+ * database; what is left in this directory is the development H2 file and whatever legacy CSVs a
+ * 1.0 install left behind for {@link com.example.Persistence.LegacyDataMigrator} to read.</p>
  */
 @Component
 public class DataDirectory {
 
     private static final Logger logger = Logger.getLogger(DataDirectory.class.getName());
-
-    /** Where the shipped seed copies live on the classpath. */
-    private static final String SEED_PREFIX = "Data/";
 
     private final Path root;
 
@@ -38,7 +33,6 @@ public class DataDirectory {
         } catch (IOException e) {
             throw new UncheckedIOException("Cannot create the data directory at " + root, e);
         }
-        seed();
         logger.info("Data directory: " + root);
     }
 
@@ -49,9 +43,7 @@ public class DataDirectory {
     /**
      * Resolves a file name against the data directory.
      *
-     * @throws IllegalArgumentException if the name would escape the directory. File names reach
-     *         this method from user-supplied import and export paths, so this is a boundary check,
-     *         not a formality.
+     * @throws IllegalArgumentException if the name would escape the directory
      */
     public Path resolve(String fileName) {
         if (fileName == null || fileName.isBlank()) {
@@ -62,42 +54,5 @@ public class DataDirectory {
             throw new IllegalArgumentException("File name escapes the data directory: " + fileName);
         }
         return resolved;
-    }
-
-    /** Copies the shipped questions out of the jar and creates the two files users generate. */
-    private void seed() {
-        copyIfAbsent(DataFiles.QUESTIONS);
-        createIfAbsent(DataFiles.USERS);
-        createIfAbsent(DataFiles.STATS);
-    }
-
-    private void copyIfAbsent(String fileName) {
-        Path target = resolve(fileName);
-        if (Files.exists(target)) {
-            return;
-        }
-        ClassPathResource seed = new ClassPathResource(SEED_PREFIX + fileName);
-        if (!seed.exists()) {
-            logger.warning("No seed copy of " + fileName + " on the classpath");
-            return;
-        }
-        try (InputStream in = seed.getInputStream()) {
-            Files.copy(in, target);
-            logger.info("Seeded " + target);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Cannot seed " + target, e);
-        }
-    }
-
-    private void createIfAbsent(String fileName) {
-        Path target = resolve(fileName);
-        if (Files.exists(target)) {
-            return;
-        }
-        try {
-            Files.createFile(target);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Cannot create " + target, e);
-        }
     }
 }

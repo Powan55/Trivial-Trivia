@@ -1,12 +1,10 @@
 package com.example.Database;
 
 /**
- * Names of the data files the application reads and writes.
+ * Names of the CSV files a 1.0 install left in the data directory.
  *
- * <p>These used to be spelled inline at every call site, and no two call sites agreed:
- * {@code "userData.csv"} in one place, {@code "Trivial-Trivia/src/Data/userData.csv"} in
- * another. Both were wrong, in different ways, which is why login and account creation
- * could never work at the same time.</p>
+ * <p>Nothing writes these any more. They are read once, under the development profile, by the
+ * migrator that moves a developer's old accounts into the database.</p>
  */
 public final class DataFiles {
 

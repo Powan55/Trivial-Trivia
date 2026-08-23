@@ -1,12 +1,14 @@
 package com.example.Database;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -24,33 +26,34 @@ class FormatAdapterTest {
     @TempDir
     Path tmp;
 
-    private DataDirectory data;
-    private FileDatabase files;
-
-    @BeforeEach
-    void setUp() {
-        data = new DataDirectory(tmp.toString());
-        files = new FileDatabase(data);
-    }
+    private final RowFormats formats = new RowFormats();
 
     static Stream<String> formats() {
-        return FileDatabase.FORMATS.stream();
+        return RowFormats.FORMATS.stream();
     }
 
-    private static ArrayList<String[]> rows(String[]... rows) {
+    private static List<String[]> rows(String[]... rows) {
         return new ArrayList<>(List.of(rows));
+    }
+
+    private String write(String format, List<String[]> rows) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        formats.of(format).write(out, rows);
+        return out.toString(StandardCharsets.UTF_8);
+    }
+
+    private List<String[]> read(String format, String document) {
+        return formats.of(format).read(new ByteArrayInputStream(document.getBytes(StandardCharsets.UTF_8)));
     }
 
     @ParameterizedTest
     @MethodSource("formats")
     void whatIsWrittenIsWhatIsReadBack(String format) {
-        ArrayList<String[]> original = rows(
+        List<String[]> original = rows(
                 new String[] {"Question", "Option1", "Option2", "Option3", "Option4", "Answer"},
                 new String[] {"Capital of France?", "London", "Berlin", "Madrid", "Paris", "Paris"});
 
-        files.writeFile("questions." + format, original);
-
-        assertThat(files.readFile("questions." + format))
+        assertThat(read(format, write(format, original)))
                 .containsExactly(original.get(0), original.get(1));
     }
 
@@ -58,55 +61,53 @@ class FormatAdapterTest {
     @MethodSource("formats")
     void survivesAwkwardCharacters(String format) {
         String[] awkward = {"Paris, France", "He said \"hi\"", "a & b < c > d", "夏目漱石", "emoji 🎯"};
-        files.writeFile("awkward." + format, rows(awkward));
-        assertThat(files.readFile("awkward." + format)).containsExactly(awkward);
+        assertThat(read(format, write(format, rows(awkward)))).containsExactly(awkward);
     }
 
     @ParameterizedTest
     @MethodSource("formats")
-    void aMissingFileReadsAsEmpty(String format) {
-        assertThat(files.readFile("nothing-here." + format)).isEmpty();
+    void anEmptyStreamReadsAsEmpty(String format) {
+        assertThat(read(format, "")).isEmpty();
     }
 
     @ParameterizedTest
     @MethodSource("formats")
-    void aMalformedFileDoesNotThrow(String format) throws Exception {
-        Files.writeString(data.resolve("broken." + format), "{[<not really any of these formats");
-        assertThatCode(() -> files.readFile("broken." + format)).doesNotThrowAnyException();
+    void aMalformedFileDoesNotThrow(String format) {
+        assertThatCode(() -> read(format, "{[<not really any of these formats"))
+                .doesNotThrowAnyException();
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {FileDatabase.JSON, FileDatabase.XML})
-    void aMalformedStructuredFileReadsAsEmpty(String format) throws Exception {
+    @ValueSource(strings = {RowFormats.JSON, RowFormats.XML})
+    void aMalformedStructuredFileReadsAsEmpty(String format) {
         // CSV has no such thing as a syntax error on a single unquoted line, so it is not here.
-        Files.writeString(data.resolve("broken2." + format), "{[<not really any of these formats");
-        assertThat(files.readFile("broken2." + format)).isEmpty();
+        assertThat(read(format, "{[<not really any of these formats")).isEmpty();
     }
 
     @Test
     void aFileWrittenAsOneFormatCanBeReadBackAsAnother() {
-        ArrayList<String[]> original = rows(
+        List<String[]> original = rows(
                 new String[] {"Question", "Answer"},
                 new String[] {"Capital of France?", "Paris"});
 
-        files.writeFile("source.json", original);
-        files.writeFile("target.xml", files.readFile("source.json"));
+        String asXml = write(RowFormats.XML, read(RowFormats.JSON, write(RowFormats.JSON, original)));
 
-        assertThat(files.readFile("target.xml")).containsExactly(original.get(0), original.get(1));
+        assertThat(read(RowFormats.XML, asXml)).containsExactly(original.get(0), original.get(1));
     }
 
     @Test
     void anUnknownExtensionIsTreatedAsCsv() {
-        files.writeFile("mystery.dat", rows(new String[] {"a", "b"}));
-        assertThat(Files.exists(data.resolve("mystery.dat"))).isTrue();
-        assertThat(files.readFile("mystery.dat")).containsExactly(new String[] {"a", "b"});
+        assertThat(formats.forFileName("mystery.dat")).isSameAs(formats.of(RowFormats.CSV));
+        assertThat(formats.of("yaml")).isSameAs(formats.of(RowFormats.CSV));
+        assertThat(formats.of(null)).isSameAs(formats.of(RowFormats.CSV));
     }
 
     @Test
     void extensionsAreReadCaseInsensitively() {
-        files.writeFile("shouty.JSON", rows(new String[] {"a", "b"}));
-        // If .JSON had fallen through to CSV this would be quoted text, not a JSON array.
-        assertThat(readRaw("shouty.JSON")).startsWith("[");
+        assertThat(RowFormats.extensionOf("shouty.JSON")).isEqualTo("json");
+        assertThat(RowFormats.extensionOf("none")).isEmpty();
+        assertThat(RowFormats.extensionOf(null)).isEmpty();
+        assertThat(formats.forFileName("shouty.JSON")).isSameAs(formats.of(RowFormats.JSON));
     }
 
     /** An XML document that tries to read a local file through an external entity. */
@@ -114,33 +115,25 @@ class FormatAdapterTest {
     void theXmlParserDoesNotResolveExternalEntities() throws Exception {
         Path secret = tmp.resolve("secret.txt");
         Files.writeString(secret, "tell-nobody");
-        Files.writeString(data.resolve("xxe.xml"), """
+        String xxe = """
                 <?xml version="1.0"?>
                 <!DOCTYPE rows [ <!ENTITY xxe SYSTEM "%s"> ]>
                 <rows><row><cell>&xxe;</cell></row></rows>
-                """.formatted(secret.toUri()));
+                """.formatted(secret.toUri());
 
         // Doctype declarations are refused outright, so this parses to nothing at all.
-        assertThat(files.readFile("xxe.xml")).isEmpty();
+        assertThat(read(RowFormats.XML, xxe)).isEmpty();
     }
 
     @Test
     void jsonIsWrittenAsRowsNotAsColumnObjects() {
-        files.writeFile("shape.json", rows(new String[] {"one", "two"}));
-        assertThat(readRaw("shape.json")).contains("\"one\"").doesNotContain("column0");
+        assertThat(write(RowFormats.JSON, rows(new String[] {"one", "two"})))
+                .contains("\"one\"").doesNotContain("column0");
     }
 
     @Test
     void xmlIsWrittenAsRowsOfCells() {
-        files.writeFile("shape.xml", rows(new String[] {"one", "two"}));
-        assertThat(readRaw("shape.xml")).contains("<rows>").contains("<row>").contains("<cell>one</cell>");
-    }
-
-    private String readRaw(String fileName) {
-        try {
-            return Files.readString(data.resolve(fileName));
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
+        assertThat(write(RowFormats.XML, rows(new String[] {"one", "two"})))
+                .contains("<rows>").contains("<row>").contains("<cell>one</cell>");
     }
 }

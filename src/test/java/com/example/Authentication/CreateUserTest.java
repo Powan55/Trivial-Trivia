@@ -1,76 +1,100 @@
 package com.example.Authentication;
 
-import java.nio.file.Path;
-import java.util.ArrayList;
-
-import com.example.Database.CSVAdapter;
-import com.example.Database.DataDirectory;
-import com.example.Database.DataFiles;
-import org.junit.jupiter.api.BeforeEach;
+import com.example.Persistence.UserRepository;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@SpringBootTest
+@ActiveProfiles("test")
 class CreateUserTest {
 
-    @TempDir
-    Path tmp;
-
-    private final PasswordEncoder encoder = new BCryptPasswordEncoder();
-
-    private CSVAdapter csv;
+    @Autowired
     private CreateUser createUser;
 
-    @BeforeEach
-    void setUp() {
-        csv = new CSVAdapter(new DataDirectory(tmp.toString()));
-        createUser = new CreateUser(csv, encoder);
-    }
+    @Autowired
+    private PlayerDetailsService players;
+
+    @Autowired
+    private UserRepository users;
+
+    @Autowired
+    private PasswordEncoder encoder;
 
     @Test
-    void writesTheUserWhereLoginLooksForIt() {
-        assertThat(createUser.makeUser(new String[] {"Ada Lovelace", "ada", "correct horse"})).isTrue();
-        assertThat(new Login(csv, encoder).authenticate("ada", "correct horse")).isNotNull();
+    void writesTheUserWhereSignInLooksForIt() {
+        assertThat(createUser.makeUser(new String[] {"Ada Lovelace", "make_ada", "correct horse"})).isTrue();
+        assertThat(signsIn("make_ada", "correct horse")).isTrue();
     }
 
     @Test
     void neverStoresThePasswordItself() {
-        createUser.makeUser(new String[] {"Ada Lovelace", "ada", "correct horse"});
-        assertThat(csv.readFile(DataFiles.USERS).get(0)).doesNotContain("correct horse");
+        createUser.makeUser(new String[] {"Ada Lovelace", "make_secret", "correct horse"});
+
+        assertThat(users.findByUsername("make_secret"))
+                .hasValueSatisfying(stored -> assertThat(stored.passwordHash()).doesNotContain("correct horse"));
     }
 
     @Test
     void refusesAUsernameThatIsTaken() {
-        assertThat(createUser.makeUser(new String[] {"Ada Lovelace", "ada", "one"})).isTrue();
-        assertThat(createUser.makeUser(new String[] {"Ada Byron", "ada", "two"})).isFalse();
-        assertThat(csv.readFile(DataFiles.USERS)).hasSize(1);
+        assertThat(createUser.makeUser(new String[] {"Ada Lovelace", "make_taken", "one"})).isTrue();
+        assertThat(createUser.makeUser(new String[] {"Ada Byron", "make_taken", "two"})).isFalse();
+
+        assertThat(signsIn("make_taken", "one")).isTrue();
+        assertThat(signsIn("make_taken", "two")).isFalse();
     }
 
     @Test
     void keepsTheUsersThatWereAlreadyThere() {
-        createUser.makeUser(new String[] {"Ada Lovelace", "ada", "one"});
-        createUser.makeUser(new String[] {"Grace Hopper", "grace", "two"});
+        createUser.makeUser(new String[] {"Ada Lovelace", "make_ada2", "one"});
+        createUser.makeUser(new String[] {"Grace Hopper", "make_grace", "two"});
 
-        assertThat(csv.readFile(DataFiles.USERS)).hasSize(2);
-        assertThat(new Login(csv, encoder).authenticate("ada", "one")).isNotNull();
-        assertThat(new Login(csv, encoder).authenticate("grace", "two")).isNotNull();
+        assertThat(signsIn("make_ada2", "one")).isTrue();
+        assertThat(signsIn("make_grace", "two")).isTrue();
     }
 
     @Test
     void theStoredHashIsBcrypt() {
-        createUser.makeUser(new String[] {"Ada Lovelace", "ada", "correct horse"});
-        assertThat(csv.readFile(DataFiles.USERS).get(0)[2]).startsWith("$2a$");
+        createUser.makeUser(new String[] {"Ada Lovelace", "make_bcrypt", "correct horse"});
+
+        assertThat(users.findByUsername("make_bcrypt"))
+                .hasValueSatisfying(stored -> assertThat(stored.passwordHash()).startsWith("$2a$"));
+    }
+
+    /** Raw BCrypt, with no {id} prefix. A DelegatingPasswordEncoder would reject every one of them. */
+    @Test
+    void theStoredHashCarriesNoEncoderPrefix() {
+        createUser.makeUser(new String[] {"Ada Lovelace", "make_prefix", "correct horse"});
+
+        assertThat(users.findByUsername("make_prefix"))
+                .hasValueSatisfying(stored -> assertThat(stored.passwordHash()).doesNotStartWith("{"));
     }
 
     @Test
     void twoUsersWithTheSamePasswordGetDifferentHashes() {
-        createUser.makeUser(new String[] {"Ada Lovelace", "ada", "same"});
-        createUser.makeUser(new String[] {"Grace Hopper", "grace", "same"});
+        createUser.makeUser(new String[] {"Ada Lovelace", "make_same1", "same"});
+        createUser.makeUser(new String[] {"Grace Hopper", "make_same2", "same"});
 
-        ArrayList<String[]> users = csv.readFile(DataFiles.USERS);
-        assertThat(users.get(0)[2]).isNotEqualTo(users.get(1)[2]);
+        assertThat(users.findByUsername("make_same1").orElseThrow().passwordHash())
+                .isNotEqualTo(users.findByUsername("make_same2").orElseThrow().passwordHash());
+    }
+
+    @Test
+    void theEncoderIsBcryptAndNotADelegatingOne() {
+        assertThat(encoder.encode("correct horse")).startsWith("$2a$");
+    }
+
+    /** What the framework will do with the row: load it, then match the password against it. */
+    private boolean signsIn(String username, String password) {
+        try {
+            return encoder.matches(password, players.loadUserByUsername(username).getPassword());
+        } catch (UsernameNotFoundException unknown) {
+            return false;
+        }
     }
 }

@@ -1,0 +1,6 @@
+<footer class="site-footer">
+    <div class="shell">
+        <p>A trivia game built with Spring Boot and JSP.
+            <a href="https://github.com/Powan55/Trivial-Trivia">Source on GitHub</a>.</p>
+    </div>
+</footer>

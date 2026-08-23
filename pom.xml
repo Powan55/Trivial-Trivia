@@ -22,6 +22,7 @@
         <java.version>17</java.version>
         <jacoco.version>0.8.13</jacoco.version>
         <opencsv.version>5.10</opencsv.version>
+        <ant.version>1.10.15</ant.version>
     </properties>
 
     <dependencies>
@@ -52,11 +53,37 @@
             <artifactId>jakarta.servlet.jsp.jstl</artifactId>
         </dependency>
 
-        <!-- BCrypt only. The full security starter would put a login wall in front of every
-             route, which is not what this app does. -->
+        <!-- The starter's login wall is the auto-configured default, not the starter: one
+             explicit SecurityFilterChain replaces it, and most routes here stay public. Absorbs
+             spring-security-crypto, which is why BCrypt is no longer a direct dependency. -->
         <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-crypto</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- JdbcClient and a connection pool. Not JPA: Hibernate measured +26.3 MB RSS and
+             +4.25 s of startup for five tables on a tenth of a CPU. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
         </dependency>
 
         <dependency>
@@ -70,6 +97,20 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Build-time only: JspC is an Ant task, and the precompile step below runs it. Test
+             scope keeps it out of the packaged artifact. -->
+        <dependency>
+            <groupId>org.apache.ant</groupId>
+            <artifactId>ant</artifactId>
+            <version>${ant.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -77,6 +118,39 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Jasper compiles a JSP the first time somebody asks for it. On a free instance with
+                 a tenth of a CPU that is a minute or two per page, paid by whoever clicked. Compile
+                 them here instead. The Dockerfile hands the output to Jasper as its scratch
+                 directory, which is what stops it compiling them again at runtime. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <id>precompile-jsp</id>
+                        <phase>process-classes</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>java</executable>
+                            <classpathScope>test</classpathScope>
+                            <arguments>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>org.apache.jasper.JspC</argument>
+                                <argument>-webapp</argument>
+                                <argument>src/main/webapp</argument>
+                                <argument>-d</argument>
+                                <argument>${project.build.outputDirectory}</argument>
+                                <argument>-compile</argument>
+                                <!-- Without this JspC reports the error, drops the page from the
+                                     output and still exits 0. -->
+                                <argument>-die</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -119,6 +193,8 @@
                             <excludes>
                                 <!-- Boot entry point: main() and the WAR initialiser hook. -->
                                 <exclude>com/example/Main.class</exclude>
+                                <!-- Generated servlets, one per JSP. Not ours to cover. -->
+                                <exclude>org/apache/jsp/**</exclude>
                             </excludes>
                             <rules>
                                 <rule>

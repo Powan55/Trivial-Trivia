@@ -1,107 +1,107 @@
-body {
-    font-family: 'Comic Sans MS', sans-serif;
-    background: linear-gradient(to right, #ffecd2, #fcb69f);
-    margin: 0;
-    padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    transition: background 0.5s ease;
+.quiz-shell {
+    max-width: 44rem;
 }
 
-.container {
-    background-color: #ffffff;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
-    width: 80%;
-    max-width: 600px;
-    text-align: center;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+.progress {
+    margin-bottom: var(--space-4);
 }
 
-h1 {
-    color: #343a40;
-    font-size: 24px;
-    margin-bottom: 20px;
-    animation: colorchange 2s infinite;
+.progress-text {
+    margin: 0 0 var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
 }
 
-@keyframes colorchange {
-    0% { color: #ff6347; }
-    50% { color: #ff4500; }
-    100% { color: #ff6347; }
+.progress-track {
+    height: 0.5rem;
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation: none !important;
-        transition: none !important;
-    }
+.progress-fill {
+    height: 100%;
+    background: var(--color-accent);
+    transition: width var(--duration-base) var(--ease-out);
+}
+
+.quiz-question {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-5);
 }
 
 .options {
-    text-align: left;
-    margin: 20px 0;
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.option {
+    position: relative;
+}
+
+.option input {
+    position: absolute;
+    left: var(--space-4);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.15rem;
+    height: 1.15rem;
+    margin: 0;
+    accent-color: var(--color-accent);
+}
+
+.option label {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    animation: slidein 1s;
-}
-
-@keyframes slidein {
-    from {
-        opacity: 0;
-        transform: translateX(-100%);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-.options input {
-    margin-right: 10px;
-    display: none;
-}
-
-.options label {
-    margin-bottom: 10px;
-    display: block;
-    color: #495057;
-    font-size: 18px;
-    background: #f9f9f9;
-    padding: 10px;
-    border-radius: 5px;
+    align-items: center;
+    min-height: 3.25rem;
+    padding: var(--space-3) var(--space-4) var(--space-3) 3.1rem;
+    background: var(--color-surface);
+    border: 2px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
     cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    transition: background-color var(--duration-fast) var(--ease-out),
+                border-color var(--duration-fast) var(--ease-out);
 }
 
-.options label:hover {
-    background-color: #d1ecf1;
-    transform: scale(1.02);
+.option label:hover {
+    background: var(--color-surface-2);
+    border-color: var(--color-accent);
 }
 
-.options input:checked + label {
-    background-color: #b8daff;
-    border: 2px solid #007bff;
-    transform: scale(1.05);
-    color: #007bff;
+.option input:checked + label {
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent);
+    box-shadow: inset 0 0 0 1px var(--color-accent);
+    font-weight: 600;
 }
 
-button {
-    background-color: #007bff;
-    color: #ffffff;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s ease, transform 0.3s ease;
+/* The ring goes on the row, not on the 1.15rem radio hiding inside it. */
+.option input:focus-visible {
+    outline: none;
 }
 
-button:hover {
-    background-color: #0056b3;
-    transform: translateY(-3px);
+.option input:focus-visible + label {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 3px;
+}
+
+.quiz-submit {
+    margin-top: var(--space-5);
+}
+
+@media (min-width: 40rem) {
+    .options {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 30rem) {
+    .quiz-submit {
+        width: 100%;
+    }
 }

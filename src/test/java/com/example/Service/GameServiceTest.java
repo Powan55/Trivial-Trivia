@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.example.Game.Question;
-import com.example.Game.Questions;
+import com.example.Persistence.QuestionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -23,8 +23,8 @@ class GameServiceTest {
 
     @BeforeEach
     void setUp() {
-        Questions questions = mock(Questions.class);
-        when(questions.getQuestion()).thenAnswer(invocation -> new ArrayList<>(List.of(CAPITAL, PLANET)));
+        QuestionRepository questions = mock(QuestionRepository.class);
+        when(questions.findAll()).thenAnswer(invocation -> new ArrayList<>(List.of(CAPITAL, PLANET)));
         game = new GameService(questions);
     }
 
@@ -47,6 +47,31 @@ class GameServiceTest {
     void currentQuestionTracksWhatWasHandedOut() {
         game.getNextQuestion();
         assertThat(game.getCurrentQuestion()).isSameAs(CAPITAL);
+    }
+
+    @Test
+    void theQuestionNumberIsOneBasedAndTracksTheQuestionOnScreen() {
+        assertThat(game.getQuestionNumber()).isZero();
+        game.getNextQuestion();
+        assertThat(game.getQuestionNumber()).isEqualTo(1);
+        game.getNextQuestion();
+        assertThat(game.getQuestionNumber()).isEqualTo(2);
+    }
+
+    @Test
+    void theLastQuestionNumberMatchesTheTotal() {
+        assertThat(game.getTotalQuestions()).isEqualTo(2);
+        game.getNextQuestion();
+        game.getNextQuestion();
+        assertThat(game.getNextQuestion()).isNull();
+        assertThat(game.getQuestionNumber()).isEqualTo(game.getTotalQuestions());
+    }
+
+    @Test
+    void submitAnswerReportsWhetherItWasRight() {
+        assertThat(game.submitAnswer(CAPITAL, "Paris")).isTrue();
+        assertThat(game.submitAnswer(CAPITAL, "London")).isFalse();
+        assertThat(game.submitAnswer(null, "Paris")).isFalse();
     }
 
     @Test
@@ -100,12 +125,13 @@ class GameServiceTest {
         assertThat(game.getRight()).isZero();
         assertThat(game.getWrong()).isZero();
         assertThat(game.getNextQuestion()).isSameAs(CAPITAL);
+        assertThat(game.getQuestionNumber()).isEqualTo(1);
     }
 
     @Test
     void anEmptyQuestionSetEndsImmediately() {
-        Questions none = mock(Questions.class);
-        when(none.getQuestion()).thenReturn(new ArrayList<>());
+        QuestionRepository none = mock(QuestionRepository.class);
+        when(none.findAll()).thenReturn(new ArrayList<>());
         assertThat(new GameService(none).getNextQuestion()).isNull();
     }
 }

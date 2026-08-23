@@ -1,0 +1,11 @@
+<%-- The verdict on the answer just given. Set only when one was scored, so a fresh round and a
+     refresh both show nothing. Included by questionPage.jsp and endGamePage.jsp. --%>
+<c:if test="${not empty answerCorrect}">
+    <p class="feedback ${answerCorrect ? 'right' : 'wrong'}" role="status"><span>
+        <c:choose>
+            <c:when test="${answerCorrect}">Correct</c:when>
+            <c:otherwise>Not quite. The answer was
+                <strong><c:out value="${correctAnswer}"/></strong>.</c:otherwise>
+        </c:choose>
+    </span></p>
+</c:if>

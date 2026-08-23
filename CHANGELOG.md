@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- A hosted instance of the app on Render, built from a `Dockerfile` in the repository
+- The demo page now offers both: play in the browser, or open the full app
+
+### Changed
+
+- The build compiles the JSPs, instead of Jasper compiling each one the first time it is asked
+  for. On a small instance that was a minute or more per page, paid by whoever clicked.
+
 ## v1.0.0 — 2026-08-20
 
 The first release where the whole thing works end to end. Before this, sign-in could not succeed

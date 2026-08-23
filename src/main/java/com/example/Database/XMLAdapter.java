@@ -1,10 +1,10 @@
 package com.example.Database;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -24,6 +24,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * The same rows as XML:
@@ -36,7 +37,7 @@ import org.xml.sax.SAXException;
  * and an XML parser at its defaults will happily fetch a URL or read a local file that the
  * document tells it to.</p>
  */
-public class XMLAdapter implements Database {
+public class XMLAdapter implements RowFormat {
 
     private static final Logger logger = Logger.getLogger(XMLAdapter.class.getName());
 
@@ -44,41 +45,32 @@ public class XMLAdapter implements Database {
     private static final String ROW = "row";
     private static final String CELL = "cell";
 
-    private final DataDirectory dataDirectory;
-
-    public XMLAdapter(DataDirectory dataDirectory) {
-        this.dataDirectory = dataDirectory;
-    }
-
     @Override
-    public ArrayList<String[]> readFile(String fileName) {
-        ArrayList<String[]> data = new ArrayList<>();
-        Path path = dataDirectory.resolve(fileName);
-        if (!Files.exists(path)) {
-            logger.warning("No such data file, returning nothing: " + path);
-            return data;
-        }
+    public List<String[]> read(InputStream in) {
+        List<String[]> data = new ArrayList<>();
         try {
-            Document document = documentBuilder().parse(path.toFile());
+            Document document = documentBuilder().parse(in);
             NodeList rows = document.getElementsByTagName(ROW);
             for (int i = 0; i < rows.getLength(); i++) {
                 data.add(cellsOf(rows.item(i)));
             }
         } catch (IOException | SAXException | ParserConfigurationException e) {
-            logger.log(Level.SEVERE, "Error reading " + path, e);
+            // Message only: the upload path is reachable by anyone who can sign in, and a
+            // stack trace per malformed file is a log an attacker gets to write.
+            logger.warning("Could not read the uploaded XML: " + e.getMessage());
+            logger.log(Level.FINE, "The upload that would not parse", e);
             return new ArrayList<>();
         }
         return data;
     }
 
     @Override
-    public void writeFile(String fileName, ArrayList<String[]> data) {
-        Path path = dataDirectory.resolve(fileName);
-        try (OutputStream out = Files.newOutputStream(path)) {
+    public void write(OutputStream out, List<String[]> rows) {
+        try {
             Document document = documentBuilder().newDocument();
             Element root = document.createElement(ROOT);
             document.appendChild(root);
-            for (String[] row : data) {
+            for (String[] row : rows) {
                 Element rowElement = document.createElement(ROW);
                 for (String cell : row) {
                     Element cellElement = document.createElement(CELL);
@@ -88,8 +80,8 @@ public class XMLAdapter implements Database {
                 root.appendChild(rowElement);
             }
             transformer().transform(new DOMSource(document), new StreamResult(out));
-        } catch (IOException | TransformerException | ParserConfigurationException e) {
-            logger.log(Level.SEVERE, "Error writing " + path, e);
+        } catch (TransformerException | ParserConfigurationException e) {
+            throw new IllegalStateException("Could not write XML", e);
         }
     }
 
@@ -114,7 +106,13 @@ public class XMLAdapter implements Database {
         factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
         factory.setXIncludeAware(false);
         factory.setExpandEntityReferences(false);
-        return factory.newDocumentBuilder();
+
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        // With no handler set, the parser installs one that prints every fatal error to stderr,
+        // so a malformed upload writes a line the caller never asked for. DefaultHandler rethrows
+        // it instead, which is what the catch above is already there for.
+        builder.setErrorHandler(new DefaultHandler());
+        return builder;
     }
 
     private static Transformer transformer() throws TransformerException {

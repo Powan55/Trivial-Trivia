@@ -18,9 +18,9 @@ mvn -B clean verify
 Green means: it compiles, all the tests pass, and coverage is above the floor in `pom.xml`. CI
 runs the same command, so a red build locally is a red build there.
 
-If you touched a JSP, that is not enough. A JSP compiles when it is first requested, so a syntax
-error in a view does not fail the build — it fails whoever opens the page. Start the app and load
-what you changed:
+That includes the JSPs: the build compiles every view, so a syntax error in one fails it. Compiling
+a page is not rendering it, though — a bad EL expression or a model attribute nothing sets still
+only shows up in a browser. If you touched a view, start the app and load it:
 
 ```bash
 mvn spring-boot:run

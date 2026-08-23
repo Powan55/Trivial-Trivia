@@ -1,10 +1,10 @@
 package com.example.Controller;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
+import java.util.List;
 
-import com.example.Database.DataFiles;
-import com.example.Database.Database;
+import com.example.Persistence.QuestionRepository;
+import com.example.Persistence.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,9 +13,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -27,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class QuestionsControllerTest {
 
     private static final String HEADER = "Question,Option1,Option2,Option3,Option4,Answer\n";
@@ -36,30 +39,45 @@ class QuestionsControllerTest {
     private MockMvc mvc;
 
     @Autowired
-    private Database database;
+    private QuestionRepository questions;
 
-    private ArrayList<String[]> original;
+    @Autowired
+    private UserRepository users;
+
+    private List<String[]> original;
 
     @BeforeEach
     void rememberTheQuestionSet() {
-        original = database.readFile(DataFiles.QUESTIONS);
+        original = questions.export();
     }
 
     @AfterEach
     void putTheQuestionSetBack() {
-        database.writeFile(DataFiles.QUESTIONS, original);
+        questions.replaceAll(original);
     }
 
-    private MockHttpSession signedIn(String username) throws Exception {
+    /** Register, promote in the database, then sign in: the whole way an administrator exists. */
+    private MockHttpSession admin(String username) throws Exception {
+        mvc.perform(post("/createUser").with(csrf())
+                .param("name", "Ada Lovelace").param("username", username).param("password", "correct horse"));
+        assertThat(users.promoteToAdmin(username)).isTrue();
+
         MockHttpSession session = new MockHttpSession();
-        mvc.perform(post("/createUser").session(session)
+        mvc.perform(post("/loginServlet").session(session).with(csrf())
+                .param("username", username).param("password", "correct horse"));
+        return session;
+    }
+
+    private MockHttpSession signedInPlayer(String username) throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        mvc.perform(post("/createUser").session(session).with(csrf())
                 .param("name", "Ada Lovelace").param("username", username).param("password", "correct horse"));
         return session;
     }
 
     /** String[] rows compare by identity, so this has to go element by element. */
     private void assertTheQuestionSetIsUntouched() {
-        assertThat(database.readFile(DataFiles.QUESTIONS))
+        assertThat(questions.export())
                 .usingRecursiveComparison()
                 .isEqualTo(original);
     }
@@ -100,36 +118,55 @@ class QuestionsControllerTest {
     }
 
     @Test
-    void aSignedInPlayerCanReplaceTheQuestionSet() throws Exception {
+    void anAdministratorCanReplaceTheQuestionSet() throws Exception {
         mvc.perform(multipart("/questions/import").file(upload("q.csv", HEADER + ONE_ROW))
-                        .session(signedIn("import_ok")))
+                        .session(admin("import_ok")).with(csrf()))
                 .andExpect(model().attribute("message", "Question set replaced."))
                 .andExpect(model().attribute("count", 1));
 
-        assertThat(database.readFile(DataFiles.QUESTIONS)).hasSize(2);
+        assertThat(questions.export()).hasSize(2);
     }
 
     @Test
     void jsonAndXmlImportsWorkToo() throws Exception {
-        MockHttpSession session = signedIn("import_formats");
+        MockHttpSession session = admin("import_formats");
 
         String json = "[[\"Question\",\"Option1\",\"Option2\",\"Option3\",\"Option4\",\"Answer\"],"
                 + "[\"Largest ocean?\",\"Atlantic\",\"Indian\",\"Pacific\",\"Arctic\",\"Pacific\"]]";
-        mvc.perform(multipart("/questions/import").file(upload("q.json", json)).session(session))
+        mvc.perform(multipart("/questions/import").file(upload("q.json", json)).session(session).with(csrf()))
                 .andExpect(model().attribute("count", 1));
 
         String xml = "<rows><row><cell>Question</cell><cell>Option1</cell><cell>Option2</cell>"
                 + "<cell>Option3</cell><cell>Option4</cell><cell>Answer</cell></row>"
                 + "<row><cell>Largest ocean?</cell><cell>Atlantic</cell><cell>Indian</cell>"
                 + "<cell>Pacific</cell><cell>Arctic</cell><cell>Pacific</cell></row></rows>";
-        mvc.perform(multipart("/questions/import").file(upload("q.xml", xml)).session(session))
+        mvc.perform(multipart("/questions/import").file(upload("q.xml", xml)).session(session).with(csrf()))
                 .andExpect(model().attribute("count", 1));
     }
 
     @Test
-    void aGuestCannotReplaceTheQuestionSet() throws Exception {
-        mvc.perform(multipart("/questions/import").file(upload("q.csv", HEADER + ONE_ROW)))
-                .andExpect(model().attribute("error", "Sign in to replace the question set."));
+    void aGuestIsSentToSignInRatherThanReplacingTheQuestionSet() throws Exception {
+        mvc.perform(multipart("/questions/import").file(upload("q.csv", HEADER + ONE_ROW)).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+
+        assertTheQuestionSetIsUntouched();
+    }
+
+    /** Signed in is not enough: replacing the set changes it for everyone who plays. */
+    @Test
+    void aSignedInPlayerWhoIsNotAnAdministratorIsRefused() throws Exception {
+        mvc.perform(multipart("/questions/import").file(upload("q.csv", HEADER + ONE_ROW))
+                        .session(signedInPlayer("import_plain")).with(csrf()))
+                .andExpect(status().isForbidden());
+
+        assertTheQuestionSetIsUntouched();
+    }
+
+    @Test
+    void anImportWithNoTokenIsRefused() throws Exception {
+        mvc.perform(multipart("/questions/import").file(upload("q.csv", HEADER + ONE_ROW))
+                        .session(admin("import_notoken")))
+                .andExpect(status().isForbidden());
 
         assertTheQuestionSetIsUntouched();
     }
@@ -137,7 +174,7 @@ class QuestionsControllerTest {
     @Test
     void anUnsupportedExtensionIsRefused() throws Exception {
         mvc.perform(multipart("/questions/import").file(upload("q.txt", HEADER + ONE_ROW))
-                        .session(signedIn("import_ext")))
+                        .session(admin("import_ext")).with(csrf()))
                 .andExpect(model().attribute("error", "Use a .csv, .json or .xml file."));
 
         assertTheQuestionSetIsUntouched();
@@ -146,7 +183,7 @@ class QuestionsControllerTest {
     @Test
     void aHeaderWithNoQuestionsIsRefused() throws Exception {
         mvc.perform(multipart("/questions/import").file(upload("q.csv", HEADER))
-                        .session(signedIn("import_empty")))
+                        .session(admin("import_empty")).with(csrf()))
                 .andExpect(model().attribute("error", "That file has a header and no questions."));
 
         assertTheQuestionSetIsUntouched();
@@ -155,7 +192,7 @@ class QuestionsControllerTest {
     @Test
     void aShortRowIsRefusedAndNothingIsOverwritten() throws Exception {
         mvc.perform(multipart("/questions/import").file(upload("q.csv", HEADER + "Largest ocean?,Atlantic\n"))
-                        .session(signedIn("import_short")))
+                        .session(admin("import_short")).with(csrf()))
                 .andExpect(model().attribute("error",
                         "Every row needs 6 columns: the question, four options and the answer."));
 
@@ -165,14 +202,14 @@ class QuestionsControllerTest {
     @Test
     void anEmptyUploadIsRefused() throws Exception {
         mvc.perform(multipart("/questions/import").file(upload("q.csv", ""))
-                        .session(signedIn("import_none")))
+                        .session(admin("import_none")).with(csrf()))
                 .andExpect(model().attribute("error", "Choose a file first."));
     }
 
     @Test
     void anImportedQuestionIsWhatTheGameThenAsks() throws Exception {
-        MockHttpSession session = signedIn("import_play");
-        mvc.perform(multipart("/questions/import").file(upload("q.csv", HEADER + ONE_ROW)).session(session));
+        MockHttpSession session = admin("import_play");
+        mvc.perform(multipart("/questions/import").file(upload("q.csv", HEADER + ONE_ROW)).session(session).with(csrf()));
 
         MockHttpSession player = new MockHttpSession();
         mvc.perform(get("/play").session(player));

@@ -43,3 +43,60 @@ jobs:
             target/site/jacoco/
           if-no-files-found: warn
           retention-days: 14
+
+  postgres:
+    name: Build and test on PostgreSQL
+    runs-on: ubuntu-latest
+
+    # The suite runs on H2 in PostgreSQL mode, which is an approximation of the database
+    # production actually runs. This is the only place the migrations and the SQL meet the real
+    # thing. Testcontainers would do it locally too, but it wants Docker on every machine.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: trivia
+          POSTGRES_PASSWORD: trivia
+          POSTGRES_DB: trivia
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+
+      # Environment, not -D: surefire forks a JVM and the fork inherits the environment.
+      # Both outrank the H2 URL in application-test.properties. Coverage is the other job's
+      # business; this one is about which database the SQL met.
+      - name: Build and test
+        run: mvn -B clean verify -Djacoco.skip=true
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/trivia
+          SPRING_DATASOURCE_USERNAME: trivia
+          SPRING_DATASOURCE_PASSWORD: trivia
+
+      # Without this the job's failure mode is a green tick. Wire the datasource wrong and the
+      # suite quietly falls back to the H2 URL in application-test.properties, passes, and proves
+      # nothing -- which is the exact silent fallback the two-profile decision exists to stop.
+      # No flyway_schema_history here means the migrations never ran against this container.
+      - name: Prove the migrations ran on PostgreSQL
+        run: PGPASSWORD=trivia psql -h localhost -U trivia -d trivia -c 'select version, description from flyway_schema_history order by installed_rank'
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-reports-postgres
+          path: target/surefire-reports/
+          if-no-files-found: warn
+          retention-days: 14

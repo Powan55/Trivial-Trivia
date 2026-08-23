@@ -7,6 +7,22 @@
 <meta name="description" content="A browser demo of Trivial Trivia, a multiple-choice trivia game built with Spring Boot and JSP.">
 <link rel="icon" href="Trivial-Trivia.jpg">
 <link rel="stylesheet" href="style.css">
+<script>
+    // Ahead of first paint, so a dark-theme reader does not get a white flash.
+    (function () {
+        var stored = null;
+        try {
+            stored = localStorage.getItem('theme');
+        } catch (error) {
+            stored = null;
+        }
+        if (stored !== 'dark' && stored !== 'light') {
+            stored = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', stored);
+    })();
+</script>
+<script src="theme.js" defer></script>
 </head>
 <body>
 <main class="card">
@@ -17,19 +33,49 @@
       <h1>Trivial Trivia</h1>
       <p class="sub">Ten questions. Ten points each.</p>
     </div>
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false" hidden>
+      <span class="theme-toggle-icon" aria-hidden="true"></span>
+      <span>Dark mode</span>
+    </button>
   </header>
 
-  <!-- Start -->
+  <!-- Start: play here, or go to the real thing -->
   <section id="start">
-    <p id="intro">Loading questions&hellip;</p>
-    <button id="begin" class="primary" disabled>Start</button>
+    <div class="choices">
+
+      <div class="choice">
+        <h2>Play it now</h2>
+        <p id="intro">Loading questions&hellip;</p>
+        <button id="begin" class="primary action" disabled>Start the demo</button>
+      </div>
+
+      <div class="choice">
+        <h2>Run the full app</h2>
+        <p>
+          The Spring Boot version, with the parts a static page cannot do: accounts, a saved score
+          history, and importing or exporting the question set as CSV, JSON or XML.
+        </p>
+        <p class="wait">
+          It sleeps when nobody is using it, so the first page can take a minute or two to answer.
+          Anything you save there goes when it sleeps again.
+        </p>
+        <a class="btn primary action" href="https://trivial-trivia.onrender.com/">Open the full app</a>
+      </div>
+
+    </div>
   </section>
 
   <!-- One question at a time -->
   <section id="round" hidden>
+    <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+
     <div class="meta">
       <span id="progress">Question 1 of 10</span>
       <span id="score" aria-live="polite">Score: 0</span>
+    </div>
+    <div class="progress-track" role="progressbar" aria-label="Round progress"
+         aria-valuemin="0" aria-valuemax="10" aria-valuenow="1" id="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
     </div>
 
     <form id="answer-form">
@@ -37,26 +83,37 @@
         <legend id="question">&nbsp;</legend>
         <div id="options" class="options"></div>
       </fieldset>
-      <button type="submit" class="primary">Submit</button>
+      <button type="submit" class="primary">Submit answer</button>
     </form>
-
-    <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
   </section>
 
   <!-- Result -->
   <section id="result" hidden>
-    <h2>Game over</h2>
-    <p class="final">Your final score is <strong id="final-score">0</strong></p>
-    <p class="tally"><span id="tally">0 right, 0 wrong</span></p>
+    <h2 id="result-heading" tabindex="-1">Game over</h2>
+
+    <div class="result-ring" id="result-ring">
+      <div class="result-ring-inner">
+        <span class="result-score" id="final-score">0</span>
+        <span class="result-score-label">points</span>
+      </div>
+    </div>
+
+    <ul class="tally">
+      <li class="tally-item tally-right">
+        <span class="tally-count" id="tally-right">0</span>
+        <span class="tally-label">right</span>
+      </li>
+      <li class="tally-item tally-wrong">
+        <span class="tally-count" id="tally-wrong">0</span>
+        <span class="tally-label">wrong</span>
+      </li>
+    </ul>
+
     <button id="again" class="primary">Play again</button>
   </section>
 
   <footer class="note">
-    <p>
-      This is a static demo of the game loop, running entirely in your browser.
-      Accounts, saved score history and question import/export live in the Java app &mdash;
-      clone the repo and run <code>mvn spring-boot:run</code> for those.
-    </p>
+    <p>Or run it yourself: <code>mvn spring-boot:run</code>.</p>
     <p>
       <a href="https://github.com/Powan55/Trivial-Trivia">Source</a> &middot;
       <a href="https://github.com/Powan55/Trivial-Trivia/releases/latest">Release</a> &middot;

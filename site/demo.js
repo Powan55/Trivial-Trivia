@@ -49,6 +49,11 @@ function render() {
     el('score').textContent = `Score: ${score}`;
     el('question').textContent = question.text;
 
+    const track = el('progress-track');
+    track.setAttribute('aria-valuemax', String(questions.length));
+    track.setAttribute('aria-valuenow', String(index + 1));
+    el('progress-fill').style.width = `${((index + 1) / questions.length) * 100}%`;
+
     const options = el('options');
     options.replaceChildren();
     question.options.forEach((option, i) => {
@@ -87,7 +92,7 @@ function submit(event) {
         feedback.className = 'feedback right';
     } else {
         wrong += 1;
-        feedback.textContent = `Not quite — the answer was ${question.answer}`;
+        feedback.textContent = `Not quite. The answer was ${question.answer}.`;
         feedback.className = 'feedback wrong';
     }
 
@@ -101,9 +106,13 @@ function submit(event) {
 
 function finish() {
     el('final-score').textContent = score;
-    el('tally').textContent = `${right} right, ${wrong} wrong`;
+    el('tally-right').textContent = right;
+    el('tally-wrong').textContent = wrong;
+    const answered = right + wrong;
+    el('result-ring').style.setProperty('--result-share',
+        `${answered > 0 ? (right / answered) * 100 : 0}%`);
     show(resultView);
-    el('again').focus();
+    el('result-heading').focus();
 }
 
 async function load() {
