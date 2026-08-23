@@ -50,6 +50,31 @@ class GameServiceTest {
     }
 
     @Test
+    void theQuestionNumberIsOneBasedAndTracksTheQuestionOnScreen() {
+        assertThat(game.getQuestionNumber()).isZero();
+        game.getNextQuestion();
+        assertThat(game.getQuestionNumber()).isEqualTo(1);
+        game.getNextQuestion();
+        assertThat(game.getQuestionNumber()).isEqualTo(2);
+    }
+
+    @Test
+    void theLastQuestionNumberMatchesTheTotal() {
+        assertThat(game.getTotalQuestions()).isEqualTo(2);
+        game.getNextQuestion();
+        game.getNextQuestion();
+        assertThat(game.getNextQuestion()).isNull();
+        assertThat(game.getQuestionNumber()).isEqualTo(game.getTotalQuestions());
+    }
+
+    @Test
+    void submitAnswerReportsWhetherItWasRight() {
+        assertThat(game.submitAnswer(CAPITAL, "Paris")).isTrue();
+        assertThat(game.submitAnswer(CAPITAL, "London")).isFalse();
+        assertThat(game.submitAnswer(null, "Paris")).isFalse();
+    }
+
+    @Test
     void aCorrectAnswerScoresTen() {
         game.submitAnswer(CAPITAL, "Paris");
         assertThat(game.getScore()).isEqualTo(10);
@@ -100,6 +125,7 @@ class GameServiceTest {
         assertThat(game.getRight()).isZero();
         assertThat(game.getWrong()).isZero();
         assertThat(game.getNextQuestion()).isSameAs(CAPITAL);
+        assertThat(game.getQuestionNumber()).isEqualTo(1);
     }
 
     @Test

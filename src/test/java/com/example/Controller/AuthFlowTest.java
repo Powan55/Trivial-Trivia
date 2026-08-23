@@ -97,6 +97,25 @@ class AuthFlowTest {
     }
 
     @Test
+    void refreshingTheEndPageDropsTheVerdictAndStillRecordsOnce() throws Exception {
+        MockHttpSession session = register("flow_verdict", "Ada Lovelace");
+
+        mvc.perform(get("/play").session(session));
+        while (question(session) != null) {
+            mvc.perform(post("/play/answer").session(session).param("answer", "definitely wrong"));
+        }
+
+        mvc.perform(get("/play/end").session(session))
+                .andExpect(model().attribute("answerCorrect", false))
+                .andExpect(model().attributeExists("correctAnswer"));
+        mvc.perform(get("/play/end").session(session))
+                .andExpect(model().attributeDoesNotExist("answerCorrect", "correctAnswer"));
+
+        MvcResult stats = mvc.perform(get("/stats").session(session)).andReturn();
+        assertThat((java.util.List<?>) stats.getModelAndView().getModel().get("scores")).hasSize(1);
+    }
+
+    @Test
     void aGuestGetsNoScoreHistory() throws Exception {
         MockHttpSession session = new MockHttpSession();
         mvc.perform(get("/guest").session(session));

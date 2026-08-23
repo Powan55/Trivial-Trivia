@@ -64,17 +64,34 @@ public class GameService {
         return currentQuestion;
     }
 
-    /** Scores an answer. Answers are compared ignoring case. */
-    public void submitAnswer(Question question, String answer) {
+    /**
+     * @return the 1-based position of the question last handed out, or 0 before the first one
+     */
+    public int getQuestionNumber() {
+        return currentQuestionIndex;
+    }
+
+    /** @return how many questions this round holds */
+    public int getTotalQuestions() {
+        return round.size();
+    }
+
+    /**
+     * Scores an answer. Answers are compared ignoring case.
+     *
+     * @return true if the answer was right
+     */
+    public boolean submitAnswer(Question question, String answer) {
         if (question == null) {
-            return;
+            return false;
         }
         if (question.getAnswer().equalsIgnoreCase(answer)) {
             score += POINTS_PER_CORRECT_ANSWER;
             right++;
-        } else {
-            wrong++;
+            return true;
         }
+        wrong++;
+        return false;
     }
 
     public int getScore() {
