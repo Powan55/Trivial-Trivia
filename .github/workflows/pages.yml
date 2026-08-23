@@ -42,7 +42,7 @@ jobs:
       - name: Assemble
         run: |
           mkdir -p _site
-          cp site/index.html site/style.css site/demo.js _site/
+          cp site/index.html site/style.css site/demo.js site/theme.js _site/
           cp src/main/resources/static/images/Trivial-Trivia.jpg _site/
           python scripts/questions-to-json.py \
             src/main/resources/Data/QuestionData.csv _site/questions.json

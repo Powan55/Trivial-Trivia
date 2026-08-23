@@ -1,0 +1,21 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><c:out value="${pageTitle}"/></title>
+<link rel="icon" href="${pageContext.request.contextPath}/images/Trivial-Trivia.jpg">
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/base.css">
+<script>
+    // Ahead of first paint, so a dark-theme reader does not get a white flash.
+    (function () {
+        var stored = null;
+        try {
+            stored = localStorage.getItem('theme');
+        } catch (error) {
+            stored = null;
+        }
+        if (stored !== 'dark' && stored !== 'light') {
+            stored = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', stored);
+    })();
+</script>
+<script src="${pageContext.request.contextPath}/js/theme.js" defer></script>

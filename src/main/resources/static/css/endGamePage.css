@@ -1,74 +1,143 @@
-/* CSS for the End Game page */
+.result-card {
+    max-width: 34rem;
+    margin-inline: auto;
+    text-align: center;
+}
 
-body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #f0f8ff, #dceeff);
+.result-kicker {
+    margin: 0 0 var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.result-title {
+    font-size: var(--text-3xl);
+    margin-bottom: var(--space-6);
+}
+
+.result-ring {
+    width: 11.5rem;
+    height: 11.5rem;
+    margin: 0 auto var(--space-5);
+    padding: 0.7rem;
+    border-radius: 50%;
+    background: conic-gradient(var(--color-accent) var(--result-share, 0%),
+                               var(--color-surface-2) 0);
+    animation: result-in var(--duration-base) var(--ease-out) both;
+}
+
+.result-ring-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background: var(--color-surface);
+    border-radius: 50%;
+}
+
+.result-score {
+    font-size: 3.25rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-accent-ink);
+}
+
+.result-score-label {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+}
+
+@keyframes result-in {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: none; }
+}
+
+.tally {
     display: flex;
     justify-content: center;
+    gap: var(--space-3);
+    margin: 0 0 var(--space-5);
+    padding: 0;
+    list-style: none;
+}
+
+.tally-item {
+    flex: 1 1 8rem;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    height: 100vh;
-    color: #333333;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid;
+    border-radius: var(--radius-md);
 }
 
-.container {
-    background: linear-gradient(145deg, #ffffff, #e8f0fe); /* Light blue gradient background */
-    padding: 50px;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    max-width: 400px;
-    width: 100%;
-    text-align: center;
-    animation: fadeIn 0.6s ease-in-out;
-}
-
-.title {
-    font-size: 42px;
-    color: #222222;
-    margin-bottom: 25px;
-    font-weight: 600;
-}
-
-.score {
-    font-size: 26px;
-    color: #444444;
-    margin-bottom: 35px;
-    font-weight: 500;
-}
-
-.score span {
+.tally-item::before {
+    font-size: var(--text-lg);
     font-weight: 700;
-    color: #ff4500; /* OrangeRed for emphasis */
-    text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    line-height: 1;
 }
 
-.play-again-btn {
-    padding: 12px 25px;
-    font-size: 20px;
-    font-weight: 600;
-    color: #ffffff;
-    background-color: #28a745; /* Green */
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+.tally-count {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
 }
 
-.play-again-btn:hover {
-    background-color: #218838;
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+.tally-label {
+    font-size: var(--text-sm);
 }
 
-/* Add a subtle animation for the container */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
+.tally-right {
+    color: var(--color-success);
+    background: var(--color-success-soft);
+    border-color: var(--color-success);
+}
+
+.tally-right::before {
+    content: "\2713";
+}
+
+.tally-wrong {
+    color: var(--color-danger);
+    background: var(--color-danger-soft);
+    border-color: var(--color-danger);
+}
+
+.tally-wrong::before {
+    content: "\2715";
+}
+
+.result-note {
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface-2);
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+}
+
+.result-actions {
+    justify-content: center;
+    margin-top: var(--space-5);
+}
+
+@media (max-width: 30rem) {
+    .result-ring {
+        width: 9.5rem;
+        height: 9.5rem;
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+
+    .result-score {
+        font-size: 2.5rem;
+    }
+
+    .result-actions .btn {
+        width: 100%;
     }
 }

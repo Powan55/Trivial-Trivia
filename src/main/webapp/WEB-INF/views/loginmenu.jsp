@@ -1,42 +1,47 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<c:set var="pageTitle" value="Sign in - Trivial Trivia"/>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign in - Trivial Trivia</title>
-    <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/css/loginMenu.css">
+<%@ include file="fragments/head.jspf" %>
+<link rel="stylesheet" href="${pageContext.request.contextPath}/css/loginMenu.css">
 </head>
 <body>
-<div class="login-container">
-    <h1>Welcome to Trivial Trivia</h1>
-    <div class="game-theme-description">
-        <p>Test your wits and join the ranks of trivia masters.</p>
-    </div>
+<%@ include file="fragments/header.jspf" %>
 
-    <c:if test="${not empty error}">
-        <p class="error" role="alert"><c:out value="${error}"/></p>
-    </c:if>
+<main id="main" class="page-main">
+    <div class="shell">
+        <div class="card card-narrow auth-card">
+            <h1>Sign in</h1>
+            <p class="lead auth-lead">Pick up your score history where you left it.</p>
 
-    <form id="loginForm" action="${pageContext.request.contextPath}/loginServlet" method="post" class="login-form">
-        <div class="input-group">
-            <label for="username">Username</label>
-            <input type="text" id="username" name="username" value="<c:out value='${username}'/>"
-                   autocomplete="username" required>
+            <c:if test="${not empty error}">
+                <p id="form-error" class="alert alert-error" role="alert"><c:out value="${error}"/></p>
+            </c:if>
+
+            <form id="loginForm" action="${pageContext.request.contextPath}/loginServlet" method="post"
+                  <c:if test="${not empty error}">aria-describedby="form-error"</c:if>>
+                <div class="field">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" value="<c:out value='${username}'/>"
+                           autocomplete="username" required>
+                </div>
+                <div class="field">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password"
+                           autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+            </form>
+
+            <p class="auth-alt">No account yet?
+                <a href="${pageContext.request.contextPath}/createUser">Create one</a>, or
+                <a href="${pageContext.request.contextPath}/guest">play as a guest</a>.</p>
         </div>
-        <div class="input-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" autocomplete="current-password" required>
-        </div>
-        <button type="submit" class="btn">Sign in</button>
-    </form>
-
-    <div class="options">
-        <a href="${pageContext.request.contextPath}/createUser">Create an account</a>
-        or
-        <a href="${pageContext.request.contextPath}/guest">play as a guest</a>
     </div>
-</div>
+</main>
+
+<%@ include file="fragments/footer.jspf" %>
 </body>
 </html>
