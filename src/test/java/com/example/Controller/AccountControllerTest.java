@@ -1,12 +1,12 @@
 package com.example.Controller;
 
-import com.example.Database.DataFiles;
-import com.example.Database.Database;
+import com.example.Persistence.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,13 +19,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class AccountControllerTest {
 
     @Autowired
     private MockMvc mvc;
 
     @Autowired
-    private Database database;
+    private UserRepository users;
 
     @Test
     void registeringSignsYouStraightIn() throws Exception {
@@ -48,9 +49,8 @@ class AccountControllerTest {
                 .param("username", "grace_reg")
                 .param("password", "correct horse"));
 
-        assertThat(database.readFile(DataFiles.USERS))
-                .filteredOn(row -> row.length > 1 && row[1].equals("grace_reg"))
-                .allSatisfy(row -> assertThat(row).doesNotContain("correct horse"));
+        assertThat(users.findByUsername("grace_reg"))
+                .hasValueSatisfying(stored -> assertThat(stored.passwordHash()).doesNotContain("correct horse"));
     }
 
     @Test
@@ -73,8 +73,7 @@ class AccountControllerTest {
                 .andExpect(view().name("createUser"))
                 .andExpect(model().attributeExists("error"));
 
-        assertThat(database.readFile(DataFiles.USERS))
-                .noneSatisfy(row -> assertThat(row[1]).isEqualTo("short_reg"));
+        assertThat(users.findByUsername("short_reg")).isEmpty();
     }
 
     @Test

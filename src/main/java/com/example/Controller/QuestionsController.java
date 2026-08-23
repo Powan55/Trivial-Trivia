@@ -1,18 +1,14 @@
 package com.example.Controller;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
+import java.io.InputStream;
+import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import com.example.Authentication.User;
-import com.example.Database.DataDirectory;
-import com.example.Database.DataFiles;
-import com.example.Database.Database;
-import com.example.Database.FileDatabase;
-import com.example.Game.Questions;
+import com.example.Database.RowFormats;
+import com.example.Persistence.QuestionRepository;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
@@ -30,18 +26,14 @@ import org.springframework.web.multipart.MultipartFile;
 @Controller
 public class QuestionsController {
 
-    /** The question, four options and the answer. */
-    private static final int COLUMNS = 6;
+    private static final int COLUMNS = QuestionRepository.COLUMNS;
 
-    private final Database database;
-    private final DataDirectory dataDirectory;
-    private final Questions questions;
+    private final RowFormats formats;
+    private final QuestionRepository questions;
     private final User user;
 
-    public QuestionsController(Database database, DataDirectory dataDirectory,
-                               Questions questions, User user) {
-        this.database = database;
-        this.dataDirectory = dataDirectory;
+    public QuestionsController(RowFormats formats, QuestionRepository questions, User user) {
+        this.formats = formats;
         this.questions = questions;
         this.user = user;
     }
@@ -50,33 +42,25 @@ public class QuestionsController {
     public String showPage(Model model) {
         model.addAttribute("player", user.getUserInfo());
         model.addAttribute("authenticated", user.isAuthenticated());
-        model.addAttribute("count", questions.getQuestion().size());
-        model.addAttribute("formats", FileDatabase.FORMATS);
+        model.addAttribute("count", questions.count());
+        model.addAttribute("formats", RowFormats.FORMATS);
         return "questions";
     }
 
     @GetMapping("/questions/export")
-    public ResponseEntity<ByteArrayResource> export(@RequestParam(defaultValue = "csv") String format)
-            throws IOException {
-        if (!FileDatabase.FORMATS.contains(format)) {
+    public ResponseEntity<ByteArrayResource> export(@RequestParam(defaultValue = "csv") String format) {
+        if (!RowFormats.FORMATS.contains(format)) {
             return ResponseEntity.badRequest().build();
         }
-        // The adapters write files, so the export is rendered to a scratch file and streamed back.
-        // The name is unique per request: two people exporting at once would otherwise collide.
-        String scratch = "export-" + UUID.randomUUID() + "." + format;
-        Path path = dataDirectory.resolve(scratch);
-        try {
-            database.writeFile(scratch, database.readFile(DataFiles.QUESTIONS));
-            ByteArrayResource body = new ByteArrayResource(Files.readAllBytes(path));
-            return ResponseEntity.ok()
-                    .contentType(mediaTypeFor(format))
-                    .header("Content-Disposition", ContentDisposition.attachment()
-                            .filename("questions." + format).build().toString())
-                    .contentLength(body.contentLength())
-                    .body(body);
-        } finally {
-            Files.deleteIfExists(path);
-        }
+        ByteArrayOutputStream rendered = new ByteArrayOutputStream();
+        formats.of(format).write(rendered, questions.export());
+        ByteArrayResource body = new ByteArrayResource(rendered.toByteArray());
+        return ResponseEntity.ok()
+                .contentType(mediaTypeFor(format))
+                .header("Content-Disposition", ContentDisposition.attachment()
+                        .filename("questions." + format).build().toString())
+                .contentLength(body.contentLength())
+                .body(body);
     }
 
     @PostMapping("/questions/import")
@@ -91,42 +75,49 @@ public class QuestionsController {
         return showPage(model);
     }
 
+    /** Everything here runs on bytes a stranger uploaded, so nothing is stored until it all checks out. */
     private Optional<String> replaceQuestions(MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             return Optional.of("Choose a file first.");
         }
-        String format = FileDatabase.extensionOf(file.getOriginalFilename());
-        if (!FileDatabase.FORMATS.contains(format)) {
+        String format = RowFormats.extensionOf(file.getOriginalFilename());
+        if (!RowFormats.FORMATS.contains(format)) {
             return Optional.of("Use a .csv, .json or .xml file.");
         }
 
-        // Parsed from a scratch copy and only written over the real file once it looks right.
-        // The uploaded name is never used as a path.
-        String scratch = "import-" + UUID.randomUUID() + "." + format;
-        Path path = dataDirectory.resolve(scratch);
-        try {
-            file.transferTo(path);
-            ArrayList<String[]> rows = database.readFile(scratch);
-            if (rows.size() < 2) {
-                return Optional.of("That file has a header and no questions.");
-            }
-            for (String[] row : rows.subList(1, rows.size())) {
-                if (row.length < COLUMNS) {
-                    return Optional.of("Every row needs " + COLUMNS
-                            + " columns: the question, four options and the answer.");
-                }
-            }
-            database.writeFile(DataFiles.QUESTIONS, rows);
-            return Optional.empty();
-        } finally {
-            Files.deleteIfExists(path);
+        List<String[]> rows;
+        try (InputStream upload = file.getInputStream()) {
+            rows = formats.of(format).read(upload);
         }
+        if (rows.size() < 2) {
+            return Optional.of("That file has a header and no questions.");
+        }
+        for (String[] row : rows.subList(1, rows.size())) {
+            if (row.length < COLUMNS) {
+                return Optional.of("Every row needs " + COLUMNS
+                        + " columns: the question, four options and the answer.");
+            }
+            if (!isAnswerable(row)) {
+                return Optional.of("Every answer has to be one of that question's four options.");
+            }
+        }
+        questions.replaceAll(rows);
+        return Optional.empty();
+    }
+
+    private static boolean isAnswerable(String[] row) {
+        for (int option = 1; option <= 4; option++) {
+            if (row[option].equals(row[5])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static MediaType mediaTypeFor(String format) {
         return switch (format) {
-            case FileDatabase.JSON -> MediaType.APPLICATION_JSON;
-            case FileDatabase.XML -> MediaType.APPLICATION_XML;
+            case RowFormats.JSON -> MediaType.APPLICATION_JSON;
+            case RowFormats.XML -> MediaType.APPLICATION_XML;
             default -> MediaType.valueOf("text/csv");
         };
     }

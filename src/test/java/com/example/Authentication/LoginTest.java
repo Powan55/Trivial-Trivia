@@ -1,71 +1,64 @@
 package com.example.Authentication;
 
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-
-import com.example.Database.CSVAdapter;
-import com.example.Database.DataDirectory;
-import com.example.Database.DataFiles;
+import com.example.Persistence.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@SpringBootTest
+@ActiveProfiles("test")
 class LoginTest {
 
-    @TempDir
-    Path tmp;
-
-    private final PasswordEncoder encoder = new BCryptPasswordEncoder();
-
-    private CSVAdapter csv;
+    @Autowired
     private Login login;
 
+    @Autowired
+    private UserRepository users;
+
+    @Autowired
+    private PasswordEncoder encoder;
+
     @BeforeEach
-    void setUp() {
-        csv = new CSVAdapter(new DataDirectory(tmp.toString()));
-        login = new Login(csv, encoder);
-        csv.writeFile(DataFiles.USERS, new ArrayList<>(List.<String[]>of(
-                new String[] {"Ada Lovelace", "ada", encoder.encode("correct horse")})));
+    void givenAStoredUser() {
+        users.insert("Ada Lovelace", "login_ada", encoder.encode("correct horse"));
     }
 
     @Test
     void acceptsTheRightPasswordAndHandsBackTheStoredUser() {
-        RealUser user = login.authenticate("ada", "correct horse");
+        RealUser user = login.authenticate("login_ada", "correct horse");
         assertThat(user).isNotNull();
-        assertThat(user.getUsername()).isEqualTo("ada");
+        assertThat(user.getUsername()).isEqualTo("login_ada");
         assertThat(user.getUserInfo()).contains("Ada Lovelace");
     }
 
     @Test
     void rejectsTheWrongPassword() {
-        assertThat(login.authenticate("ada", "Correct horse")).isNull();
+        assertThat(login.authenticate("login_ada", "Correct horse")).isNull();
     }
 
     @Test
     void rejectsAnUnknownUser() {
-        assertThat(login.authenticate("grace", "correct horse")).isNull();
+        assertThat(login.authenticate("login_nobody", "correct horse")).isNull();
     }
 
     @Test
     void rejectsNulls() {
         assertThat(login.authenticate(null, "correct horse")).isNull();
-        assertThat(login.authenticate("ada", null)).isNull();
+        assertThat(login.authenticate("login_ada", null)).isNull();
     }
 
+    /** A hash written before this milestone has to keep working, verbatim, with no re-hashing. */
     @Test
-    void rejectsEverythingWhenThereAreNoUsers() {
-        csv.writeFile(DataFiles.USERS, new ArrayList<>());
-        assertThat(login.authenticate("ada", "correct horse")).isNull();
-    }
+    void acceptsAHashThatWasStoredByTheOldFileDatastore() {
+        String legacy = "$2a$10$jApN1zYYVxlVAgHbqfZEOuKLm2kDtC09Baej4iQVWi.GLpJw/zE0q";
+        users.insert("Legacy", "login_legacy", legacy);
 
-    @Test
-    void aTruncatedRowIsSkippedRatherThanThrowing() {
-        csv.writeFile(DataFiles.USERS, new ArrayList<>(List.<String[]>of(new String[] {"Ada", "ada"})));
-        assertThat(login.authenticate("ada", "correct horse")).isNull();
+        assertThat(login.authenticate("login_legacy", "correct horse")).isNotNull();
+        assertThat(login.authenticate("login_legacy", "wrong")).isNull();
     }
 }

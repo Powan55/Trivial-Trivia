@@ -1,10 +1,9 @@
 package com.example.Controller;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
+import java.util.List;
 
-import com.example.Database.DataFiles;
-import com.example.Database.Database;
+import com.example.Persistence.QuestionRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +12,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class QuestionsControllerTest {
 
     private static final String HEADER = "Question,Option1,Option2,Option3,Option4,Answer\n";
@@ -36,18 +37,18 @@ class QuestionsControllerTest {
     private MockMvc mvc;
 
     @Autowired
-    private Database database;
+    private QuestionRepository questions;
 
-    private ArrayList<String[]> original;
+    private List<String[]> original;
 
     @BeforeEach
     void rememberTheQuestionSet() {
-        original = database.readFile(DataFiles.QUESTIONS);
+        original = questions.export();
     }
 
     @AfterEach
     void putTheQuestionSetBack() {
-        database.writeFile(DataFiles.QUESTIONS, original);
+        questions.replaceAll(original);
     }
 
     private MockHttpSession signedIn(String username) throws Exception {
@@ -59,7 +60,7 @@ class QuestionsControllerTest {
 
     /** String[] rows compare by identity, so this has to go element by element. */
     private void assertTheQuestionSetIsUntouched() {
-        assertThat(database.readFile(DataFiles.QUESTIONS))
+        assertThat(questions.export())
                 .usingRecursiveComparison()
                 .isEqualTo(original);
     }
@@ -106,7 +107,7 @@ class QuestionsControllerTest {
                 .andExpect(model().attribute("message", "Question set replaced."))
                 .andExpect(model().attribute("count", 1));
 
-        assertThat(database.readFile(DataFiles.QUESTIONS)).hasSize(2);
+        assertThat(questions.export()).hasSize(2);
     }
 
     @Test

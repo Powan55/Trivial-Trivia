@@ -1,10 +1,5 @@
 package com.example.Authentication;
 
-import java.util.ArrayList;
-
-import com.example.Database.DataFiles;
-import com.example.Database.Database;
-
 /**
  * A player who has signed in.
  *
@@ -34,12 +29,5 @@ public class RealUser implements User {
     @Override
     public boolean isAuthenticated() {
         return true;
-    }
-
-    @Override
-    public void saveScore(Database database, int score) {
-        ArrayList<String[]> stats = database.readFile(DataFiles.STATS);
-        stats.add(new String[] {userName, String.valueOf(score)});
-        database.writeFile(DataFiles.STATS, stats);
     }
 }

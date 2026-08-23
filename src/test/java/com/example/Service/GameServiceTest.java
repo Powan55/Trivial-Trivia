@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.example.Game.Question;
-import com.example.Game.Questions;
+import com.example.Persistence.QuestionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -23,8 +23,8 @@ class GameServiceTest {
 
     @BeforeEach
     void setUp() {
-        Questions questions = mock(Questions.class);
-        when(questions.getQuestion()).thenAnswer(invocation -> new ArrayList<>(List.of(CAPITAL, PLANET)));
+        QuestionRepository questions = mock(QuestionRepository.class);
+        when(questions.findAll()).thenAnswer(invocation -> new ArrayList<>(List.of(CAPITAL, PLANET)));
         game = new GameService(questions);
     }
 
@@ -130,8 +130,8 @@ class GameServiceTest {
 
     @Test
     void anEmptyQuestionSetEndsImmediately() {
-        Questions none = mock(Questions.class);
-        when(none.getQuestion()).thenReturn(new ArrayList<>());
+        QuestionRepository none = mock(QuestionRepository.class);
+        when(none.findAll()).thenReturn(new ArrayList<>());
         assertThat(new GameService(none).getNextQuestion()).isNull();
     }
 }

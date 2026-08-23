@@ -3,7 +3,7 @@ package com.example.Service;
 import java.util.List;
 
 import com.example.Game.Question;
-import com.example.Game.Questions;
+import com.example.Persistence.QuestionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.annotation.SessionScope;
 
@@ -22,7 +22,7 @@ public class GameService {
     /** Points for a correct answer. A wrong answer costs nothing. */
     private static final int POINTS_PER_CORRECT_ANSWER = 10;
 
-    private final Questions questions;
+    private final QuestionRepository questions;
 
     private List<Question> round;
     private Question currentQuestion;
@@ -32,14 +32,14 @@ public class GameService {
     private int wrong;
     private boolean recorded;
 
-    public GameService(Questions questions) {
+    public GameService(QuestionRepository questions) {
         this.questions = questions;
         startGame();
     }
 
     /** Reloads the questions and resets the cursor and the counters. */
     public void startGame() {
-        this.round = questions.getQuestion();
+        this.round = questions.findAll();
         this.currentQuestion = null;
         this.currentQuestionIndex = 0;
         this.score = 0;

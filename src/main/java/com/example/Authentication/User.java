@@ -1,7 +1,5 @@
 package com.example.Authentication;
 
-import com.example.Database.Database;
-
 /**
  * Whoever is playing right now -- either a signed-in player or a guest.
  */
@@ -14,7 +12,4 @@ public interface User {
     String getUserInfo();
 
     boolean isAuthenticated();
-
-    /** Appends a finished round's score to the stats file. A guest's score is not stored. */
-    void saveScore(Database database, int score);
 }

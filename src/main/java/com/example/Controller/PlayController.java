@@ -3,8 +3,8 @@ package com.example.Controller;
 import java.util.Map;
 
 import com.example.Authentication.User;
-import com.example.Database.Database;
 import com.example.Game.Question;
+import com.example.Persistence.RoundRepository;
 import com.example.Service.GameService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
@@ -24,12 +24,12 @@ import org.springframework.web.servlet.support.RequestContextUtils;
 public class PlayController {
 
     private final GameService gameService;
-    private final Database database;
+    private final RoundRepository rounds;
     private final User user;
 
-    public PlayController(GameService gameService, Database database, User user) {
+    public PlayController(GameService gameService, RoundRepository rounds, User user) {
         this.gameService = gameService;
-        this.database = database;
+        this.rounds = rounds;
         this.user = user;
     }
 
@@ -73,8 +73,10 @@ public class PlayController {
 
     @GetMapping("/end")
     public String endGame(Model model) {
-        if (gameService.claimUnrecordedRound()) {
-            user.saveScore(database, gameService.getScore());
+        // A guest's round is not stored: there is nothing to key it to.
+        if (gameService.claimUnrecordedRound() && user.isAuthenticated()) {
+            rounds.record(user.getUsername(), gameService.getScore(),
+                    gameService.getRight(), gameService.getWrong());
         }
         model.addAttribute("score", gameService.getScore());
         model.addAttribute("right", gameService.getRight());
