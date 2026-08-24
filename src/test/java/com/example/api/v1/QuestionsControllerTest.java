@@ -9,6 +9,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,5 +35,27 @@ class QuestionsControllerTest {
                 .andExpect(jsonPath("$[0].text").exists())
                 .andExpect(jsonPath("$[0].option1").exists())
                 .andExpect(jsonPath("$[0].answer").doesNotExist());
+    }
+
+    @Test
+    void exportComesBackAsAnAttachmentInEachFormat() throws Exception {
+        mvc.perform(get("/api/v1/questions/export").param("format", "csv"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/csv"))
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("questions.csv")));
+
+        mvc.perform(get("/api/v1/questions/export").param("format", "json"))
+                .andExpect(content().contentTypeCompatibleWith("application/json"))
+                .andExpect(content().string(org.hamcrest.Matchers.startsWith("[")));
+
+        mvc.perform(get("/api/v1/questions/export").param("format", "xml"))
+                .andExpect(content().contentTypeCompatibleWith("application/xml"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("<rows>")));
+    }
+
+    @Test
+    void anUnknownExportFormatIsRefused() throws Exception {
+        mvc.perform(get("/api/v1/questions/export").param("format", "yaml")).andExpect(status().isBadRequest());
     }
 }

@@ -34,7 +34,7 @@
                     <c:forEach var="format" items="${formats}">
                         <li>
                             <a class="btn btn-quiet btn-block"
-                               href="${pageContext.request.contextPath}/questions/export?format=<c:out value='${format}'/>">
+                               href="${pageContext.request.contextPath}/api/v1/questions/export?format=<c:out value='${format}'/>">
                                 Download as <c:out value="${fn:toUpperCase(format)}"/>
                             </a>
                         </li>

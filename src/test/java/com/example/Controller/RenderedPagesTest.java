@@ -118,7 +118,7 @@ class RenderedPagesTest {
     /** Export is open to anyone, and it is the one public route that renders no view at all. */
     @Test
     void theQuestionSetExportsToAnyone() {
-        ResponseEntity<String> export = rest.getForEntity("/questions/export?format=csv", String.class);
+        ResponseEntity<String> export = rest.getForEntity("/api/v1/questions/export?format=csv", String.class);
 
         assertThat(export.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(export.getBody()).startsWith("\"Question\",\"Option1\"");

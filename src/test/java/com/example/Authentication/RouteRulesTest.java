@@ -44,7 +44,7 @@ class RouteRulesTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/", "/menu", "/loginMenu", "/createUser", "/questions",
-            "/questions/export", "/css/base.css", "/js/theme.js"})
+            "/api/v1/questions/export", "/css/base.css", "/js/theme.js"})
     void everyPublicPageIsServedSignedOut(String path) throws Exception {
         mvc.perform(get(path)).andExpect(status().isOk());
     }
