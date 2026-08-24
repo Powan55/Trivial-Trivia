@@ -2,6 +2,7 @@ package com.example;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -36,6 +37,7 @@ public class SecurityConfig {
                                 "/questions/export", "/loginMenu", "/loginServlet", "/createUser",
                                 "/guest", "/css/**", "/js/**", "/images/**", "/favicon.ico",
                                 "/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/**").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(form -> form
                         // The page and the processing URL keep the paths the views and the
