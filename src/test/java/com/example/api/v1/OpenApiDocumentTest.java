@@ -3,9 +3,12 @@ package com.example.api.v1;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,21 +48,23 @@ class OpenApiDocumentTest {
     @Test
     void theGeneratedDocumentCoversTheApiV1Surface() throws IOException {
         ResponseEntity<String> form = rest.getForEntity("/createUser", String.class);
-        String formCookie = cookieIn(form);
+        Map<String, String> jar = new LinkedHashMap<>();
+        collectCookies(jar, form);
         String token = tokenIn(form.getBody());
 
         HttpHeaders registerHeaders = new HttpHeaders();
         registerHeaders.setContentType(MediaType.APPLICATION_JSON);
-        registerHeaders.add(HttpHeaders.COOKIE, formCookie);
+        registerHeaders.add(HttpHeaders.COOKIE, cookieHeader(jar));
         String registration = """
                 {"name": "OpenAPI Test", "username": "openapi_doc_user", "password": "correct horse"}
                 """;
         ResponseEntity<String> registered = rest.exchange("/api/v1/users?_csrf=" + token,
                 HttpMethod.POST, new HttpEntity<>(registration, registerHeaders), String.class);
         assertThat(registered.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        collectCookies(jar, registered);
 
         HttpHeaders docsHeaders = new HttpHeaders();
-        docsHeaders.add(HttpHeaders.COOKIE, cookieIn(registered));
+        docsHeaders.add(HttpHeaders.COOKIE, cookieHeader(jar));
         ResponseEntity<String> response = rest.exchange("/v3/api-docs", HttpMethod.GET,
                 new HttpEntity<>(docsHeaders), String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -82,11 +87,34 @@ class OpenApiDocumentTest {
                 .contains("201");
     }
 
-    private static String cookieIn(ResponseEntity<String> response) {
+    /**
+     * A real Set-Cookie list now carries both JSESSIONID and XSRF-TOKEN, so the jar has to merge
+     * by name rather than trust whichever header happened to come last -- and has to drop a
+     * cookie a response deletes (empty value), since CsrfAuthenticationStrategy deletes the CSRF
+     * cookie on sign-in and only regenerates it on the next request, not the sign-in response
+     * itself.
+     */
+    private static void collectCookies(Map<String, String> jar, ResponseEntity<?> response) {
         List<String> cookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
-        assertThat(cookies).as("a session cookie").isNotNull().isNotEmpty();
-        String session = cookies.get(cookies.size() - 1);
-        return session.substring(0, session.indexOf(';'));
+        if (cookies == null) {
+            return;
+        }
+        for (String cookie : cookies) {
+            String pair = cookie.substring(0, cookie.indexOf(';'));
+            String name = pair.substring(0, pair.indexOf('='));
+            String value = pair.substring(pair.indexOf('=') + 1);
+            if (value.isEmpty()) {
+                jar.remove(name);
+            } else {
+                jar.put(name, value);
+            }
+        }
+    }
+
+    private static String cookieHeader(Map<String, String> jar) {
+        return jar.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining("; "));
     }
 
     private static String tokenIn(String body) {

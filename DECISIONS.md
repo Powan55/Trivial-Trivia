@@ -894,3 +894,38 @@ that should not be allowed to sit unexamined. This entry is that examination.
 Revisit the moment `Registration` and `RegistrationRequest` unify (open question 3 in the M3
 blueprint already names this as the likely next step). Widening `signIn` to package-private and
 deleting the copy in `RegistrationController` is a one-word change once that happens.
+
+---
+
+## 27. CSRF for the API is a dual-mode request handler, not a mirrored cookie
+
+**Status:** accepted, and narrows entry 8
+
+**Context.** Entry 8 said the CSRF token would be "exposed through a cookie repository the
+page's JavaScript can read, with the Spring Security 6 request handler that keeps BREACH
+protection working" -- as if both halves were one setting. They are not compatible on their
+own: `CookieCsrfTokenRepository` always persists the raw token; `XorCsrfTokenRequestAttributeHandler`
+only ever accepts a freshly XOR-masked encoding of it back. A rendered page produces that
+encoding by evaluating `${_csrf.token}`. A client with nothing but `document.cookie` -- curl,
+Postman, a JS client with no page to scrape -- can only mirror the raw value, and the masked
+handler rejects it outright.
+
+**Decision.** `DualCsrfTokenRequestHandler` tries `XorCsrfTokenRequestAttributeHandler` first and
+falls back to a plain raw-value comparison only when the masked resolution fails to decode.
+Every rendered form still gets a masked value on every request, so BREACH protection on that path
+is unchanged; the fallback is the same double-submit-cookie comparison Spring shipped before the
+masked handler existed, and it only runs on a request the masked check has already given up on.
+`CsrfCookieFilter` runs immediately after `CsrfFilter` to force the deferred token to resolve on
+every request, not just ones a JSP renders, since nothing else would ever call `getToken()` on a
+plain API GET and the cookie would never get written. The cookie also carries an explicit
+`SameSite=Lax`, matching the session cookie's own posture [6] rather than the browser's default
+heuristic.
+
+**Consequences.** The double-submit fallback's safety rests on secrecy, not on cookie
+transmission: this app runs no CORS configuration anywhere, so a cross-origin page can neither
+read the cookie value nor set a matching header, and the cookie carries no `Domain`, so it is
+host-only. That is what makes the fallback sound here specifically -- it would not automatically
+be sound behind a CORS policy that allowed credentialed cross-origin requests to `/api/v1/**`.
+
+Revisit if a CORS policy is ever added for `/api/v1/**`: the no-CORS assumption this entry leans
+on would need re-proving, not assumed to still hold.

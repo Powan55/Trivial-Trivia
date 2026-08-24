@@ -9,6 +9,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandlerImpl;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.header.HeaderWriterFilter;
 import org.springframework.security.web.context.DelegatingSecurityContextRepository;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -34,7 +36,21 @@ public class SecurityConfig {
             ApiProblemHandler apiProblemHandler) throws Exception {
         // CSRF and changeSessionId session fixation protection are on by default. Nothing here
         // turns either off, and both are the reason the forms carry a hidden token.
+        //
+        // The repository moves from the session to a readable cookie so a client with no prior
+        // page load -- the API, not just the JSPs -- has somewhere to read a token from.
+        // CookieCsrfTokenRepository always persists the raw token in that cookie, though, and
+        // XorCsrfTokenRequestAttributeHandler on its own only accepts a freshly masked encoding
+        // of it back -- exactly what a rendered page's ${_csrf.token} produces, and exactly what
+        // a client with nothing but the cookie has no way to produce; it can only mirror what it
+        // read. DualCsrfTokenRequestHandler tries the masked check first, so every rendered form
+        // keeps the same BREACH protection it already has, and only falls back to a plain
+        // comparison of the raw value when that fails, which is what lets the cookie work on its
+        // own for a client with no page to scrape.
         http
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(csrfCookieRepository())
+                        .csrfTokenRequestHandler(new DualCsrfTokenRequestHandler()))
                 .authorizeHttpRequests(routes -> routes
                         .requestMatchers("/questions/import").hasRole("ADMIN")
                         .requestMatchers("/stats").authenticated()
@@ -82,8 +98,25 @@ public class SecurityConfig {
                 // both set before the chain continues. What matters is that it is in this chain
                 // at all: its coverage is whatever spring.security.filter.dispatcher-types says,
                 // so narrowing that property narrows CSP with it.
-                .addFilterBefore(new ContentSecurityPolicyFilter(), HeaderWriterFilter.class);
+                .addFilterBefore(new ContentSecurityPolicyFilter(), HeaderWriterFilter.class)
+                // CsrfFilter only saves the token -- writes the cookie -- once something reads
+                // it. A JSP does, via ${_csrf.token}; a JSON endpoint never does, so without this
+                // the cookie a non-JSP client needs would never appear on its response.
+                .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class);
         return http.build();
+    }
+
+    /**
+     * {@code withHttpOnlyFalse()} is the point -- a client with no JSP to scrape has to be able
+     * to read this cookie -- but that default carries no {@code SameSite}, unlike the session
+     * cookie's own explicit {@code lax}. Matching it here isn't load-bearing for the CSRF defense
+     * itself [27], but leaving it to the browser's default heuristic is the "framework can be
+     * configured to handle it" gap this project already stopped tolerating once [6].
+     */
+    private static CookieCsrfTokenRepository csrfCookieRepository() {
+        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        repository.setCookieCustomizer(cookie -> cookie.sameSite("Lax"));
+        return repository;
     }
 
     /**

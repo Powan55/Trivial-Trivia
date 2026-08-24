@@ -3,10 +3,12 @@ package com.example.Controller;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.example.Persistence.QuestionRepository;
@@ -207,7 +209,12 @@ class RenderedPagesTest {
         List<String[]> shipped = questions.export();
         try {
             String cookie = signInAsAdmin("render_admin");
-            String page = get("/questions", cookie).getBody();
+            // CsrfAuthenticationStrategy deletes the CSRF cookie on sign-in and regenerates it
+            // "upon the next request" (its own javadoc) rather than on the sign-in response
+            // itself, so this GET is what actually produces the cookie the import below needs.
+            ResponseEntity<String> questionsPage = get("/questions", cookie);
+            cookie = withUpdatedCookies(cookie, questionsPage);
+            String page = questionsPage.getBody();
             assertThat(page).contains("<title>Questions - Trivial Trivia</title>")
                     .contains("<label for=\"file\">");
 
@@ -278,6 +285,33 @@ class RenderedPagesTest {
         assertThat(asAdmin).contains(IMPORT_FORM).doesNotContain("needs an administrator account");
     }
 
+    /**
+     * The other tests in this class prove sign-out only by asserting the form's markup is
+     * present, never by submitting it. This is the real round trip: the session that answers
+     * `/stats` before this POST must not answer it after.
+     */
+    @Test
+    void signingOutEndsTheSessionForReal() {
+        String cookie = signInAsPlayer("render_signout");
+
+        ResponseEntity<String> menu = get("/menu", cookie);
+        cookie = withUpdatedCookies(cookie, menu);
+        assertThat(menu.getBody()).contains(SIGN_OUT_FORM);
+
+        ResponseEntity<String> signedOut = post("/logout", cookie, field("_csrf", tokenIn(menu.getBody())));
+        assertThat(signedOut.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(signedOut.getHeaders().getFirst(HttpHeaders.LOCATION)).endsWith("/loginMenu");
+
+        // `direct` doesn't follow redirects (needed above, to read the Location header itself),
+        // so the actual "am I still signed in" check needs `rest`, which does.
+        cookie = withUpdatedCookies(cookie, signedOut);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.COOKIE, cookie);
+        ResponseEntity<String> stats = rest.exchange("/stats", HttpMethod.GET,
+                new HttpEntity<>(headers), String.class);
+        assertThat(stats.getBody()).contains("<title>Sign in - Trivial Trivia</title>");
+    }
+
     /** Rendered only when the request carries a principal, so it doubles as "am I signed in". */
     private static final String SIGN_OUT_FORM = "action=\"/logout\" method=\"post\"";
     private static final String IMPORT_FORM = "action=\"/questions/import\"";
@@ -296,8 +330,10 @@ class RenderedPagesTest {
     }
 
     private void register(String username) {
+        Map<String, String> jar = new LinkedHashMap<>();
         ResponseEntity<String> form = get("/createUser", null);
-        ResponseEntity<String> registered = post("/createUser", cookieIn(form),
+        collectCookies(jar, form);
+        ResponseEntity<String> registered = post("/createUser", cookieHeader(jar),
                 field("name", "Ada Lovelace"), field("username", username),
                 field("password", "correct horse"), field("_csrf", tokenIn(form.getBody())));
 
@@ -306,15 +342,23 @@ class RenderedPagesTest {
     }
 
     private String signIn(String username) {
+        // Two cookies now carry the round trip: JSESSIONID for the session, XSRF-TOKEN for the
+        // CSRF repository. A browser sends every cookie it holds, not just the newest one, so the
+        // jar has to be merged rather than replaced.
+        Map<String, String> jar = new LinkedHashMap<>();
         ResponseEntity<String> page = get("/loginMenu", null);
-        ResponseEntity<String> signedIn = post("/loginServlet", cookieIn(page),
+        collectCookies(jar, page);
+        ResponseEntity<String> signedIn = post("/loginServlet", cookieHeader(jar),
                 field("username", username), field("password", "correct horse"),
                 field("_csrf", tokenIn(page.getBody())));
 
         assertThat(signedIn.getStatusCode()).isEqualTo(HttpStatus.FOUND);
         assertThat(signedIn.getHeaders().getFirst(HttpHeaders.LOCATION)).endsWith("/menu");
-        // Session fixation changed the id, so the cookie to carry is the one on this response.
-        return cookieIn(signedIn);
+        // Session fixation rotates JSESSIONID and CsrfAuthenticationStrategy rotates the CSRF
+        // token on the same request; merging keeps whichever of the two changed and whichever
+        // didn't.
+        collectCookies(jar, signedIn);
+        return cookieHeader(jar);
     }
 
     @SafeVarargs
@@ -363,13 +407,44 @@ class RenderedPagesTest {
         return Map.entry(name, value);
     }
 
-    private static String cookieIn(ResponseEntity<String> response) {
+    private static void collectCookies(Map<String, String> jar, ResponseEntity<?> response) {
         List<String> cookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
-        if (cookies == null || cookies.isEmpty()) {
+        if (cookies == null) {
+            return;
+        }
+        for (String cookie : cookies) {
+            String pair = cookie.substring(0, cookie.indexOf(';'));
+            String name = pair.substring(0, pair.indexOf('='));
+            String value = pair.substring(pair.indexOf('=') + 1);
+            // CsrfAuthenticationStrategy deletes the CSRF cookie on sign-in (empty value,
+            // Max-Age=0) rather than rotating it in place. A real browser drops a deleted
+            // cookie instead of resending it, so the jar has to as well.
+            if (value.isEmpty()) {
+                jar.remove(name);
+            } else {
+                jar.put(name, value);
+            }
+        }
+    }
+
+    private static String withUpdatedCookies(String cookie, ResponseEntity<?> response) {
+        Map<String, String> jar = new LinkedHashMap<>();
+        if (cookie != null) {
+            for (String pair : cookie.split("; ")) {
+                jar.put(pair.substring(0, pair.indexOf('=')), pair.substring(pair.indexOf('=') + 1));
+            }
+        }
+        collectCookies(jar, response);
+        return cookieHeader(jar);
+    }
+
+    private static String cookieHeader(Map<String, String> jar) {
+        if (jar.isEmpty()) {
             return null;
         }
-        String session = cookies.get(cookies.size() - 1);
-        return session.substring(0, session.indexOf(';'));
+        return jar.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining("; "));
     }
 
     private static String tokenIn(String body) {
