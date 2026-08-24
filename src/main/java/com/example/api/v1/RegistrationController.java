@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -38,6 +39,7 @@ public class RegistrationController {
     }
 
     @PostMapping("/api/v1/users")
+    @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<CurrentUserDto> register(@Valid @RequestBody RegistrationRequest request,
             HttpServletRequest servletRequest, HttpServletResponse servletResponse) {
         boolean created = createUser.makeUser(
