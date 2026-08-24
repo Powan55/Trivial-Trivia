@@ -869,3 +869,28 @@ real change to a workflow nobody has touched since it was written, not a free ad
 Revisit if Boot ever drops `/v3/api-docs` from the core generator artifact and folds it into the UI
 starter, at which point this decision and 15 collapse into the same trade-off they are trying to
 keep apart.
+
+---
+
+## 26. `RegistrationController.signIn` duplicates `AccountController.signIn`, on purpose, for one milestone
+
+**Status:** accepted, temporary
+
+**Context.** `POST /api/v1/users` [M3] signs the new account in the same way the JSP registration
+flow does: same session-fixation guard, same `SecurityContext`/`UsernamePasswordAuthenticationToken`
+construction, same `SecurityContextRepository.saveContext` call. That logic already exists as a
+private method on `AccountController`. Widening it to package-private and calling it from
+`api.v1` was the obvious fix, except decision [7]'s resolved open question froze
+`AccountController` and `Registration.validate` for this milestone specifically, so the REST path
+and the JSP path could be reviewed as independent, smaller slices rather than one commit that
+changes both a public API and existing form behaviour.
+
+**Decision.** Copy the method rather than extract it, for this milestone only. Both copies are
+covered by tests that would catch either one drifting from the other.
+
+**Consequences.** Two copies of session-fixation-sensitive code, which is exactly the kind of thing
+that should not be allowed to sit unexamined. This entry is that examination.
+
+Revisit the moment `Registration` and `RegistrationRequest` unify (open question 3 in the M3
+blueprint already names this as the likely next step). Widening `signIn` to package-private and
+deleting the copy in `RegistrationController` is a one-word change once that happens.

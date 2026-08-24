@@ -39,6 +39,7 @@ public class SecurityConfig {
                         .requestMatchers("/questions/import").hasRole("ADMIN")
                         .requestMatchers("/stats").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/rounds").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
                         .requestMatchers("/", "/menu", "/play/**", "/questions",
                                 "/loginMenu", "/loginServlet", "/createUser",
                                 "/guest", "/css/**", "/js/**", "/images/**", "/favicon.ico",
