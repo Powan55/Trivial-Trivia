@@ -192,7 +192,7 @@ the migration off themselves, which is a fair test of whether the seam was where
 says the starter "would put a login wall in front of every route". True of the auto-configured
 default, and not true once there is an explicit chain [6]. The rules:
 
-- public: `/`, `/menu`, `/play/**`, `/questions`, `/questions/export`, `/loginMenu`,
+- public: `/`, `/menu`, `/play/**`, `/questions`, `/api/v1/questions/export`, `/loginMenu`,
   `/loginServlet`, `/createUser`, `/guest`, `/error`, static assets. `GET /api/v1/**` joins them
   at M3, and `/actuator/health/**` at M6, once the actuator dependency itself lands.
 - authenticated: `/stats`, and anything not named above, since the chain ends
@@ -275,7 +275,7 @@ nothing to justify its boot cost against [12]. The round in progress does not ge
 by a round id, and a versioned API is the wrong place to commit to a shape that milestone is about
 to replace.
 
-`GET /api/v1/**` joins the public routes, the same way `/questions/export` already is [6], except
+`GET /api/v1/**` joins the public routes, the same way `/api/v1/questions/export` already is [6], except
 where a route mirrors something the JSP side keeps behind a session: score history matches
 `/stats` and stays `authenticated()`, listed ahead of the blanket rule the same way `/stats`
 itself is today.
