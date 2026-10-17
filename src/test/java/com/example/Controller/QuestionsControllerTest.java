@@ -21,8 +21,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -93,28 +91,6 @@ class QuestionsControllerTest {
                 .andExpect(view().name("questions"))
                 .andExpect(model().attribute("count", original.size() - 1))
                 .andExpect(model().attribute("formats", org.hamcrest.Matchers.hasItems("csv", "json", "xml")));
-    }
-
-    @Test
-    void exportComesBackAsAnAttachmentInEachFormat() throws Exception {
-        mvc.perform(get("/questions/export").param("format", "csv"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith("text/csv"))
-                .andExpect(header().string("Content-Disposition",
-                        org.hamcrest.Matchers.containsString("questions.csv")));
-
-        mvc.perform(get("/questions/export").param("format", "json"))
-                .andExpect(content().contentTypeCompatibleWith("application/json"))
-                .andExpect(content().string(org.hamcrest.Matchers.startsWith("[")));
-
-        mvc.perform(get("/questions/export").param("format", "xml"))
-                .andExpect(content().contentTypeCompatibleWith("application/xml"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("<rows>")));
-    }
-
-    @Test
-    void anUnknownExportFormatIsRefused() throws Exception {
-        mvc.perform(get("/questions/export").param("format", "yaml")).andExpect(status().isBadRequest());
     }
 
     @Test

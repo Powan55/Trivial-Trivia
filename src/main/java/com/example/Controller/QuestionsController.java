@@ -1,6 +1,5 @@
 package com.example.Controller;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -9,10 +8,6 @@ import java.util.Optional;
 import com.example.Authentication.CurrentPlayer;
 import com.example.Database.RowFormats;
 import com.example.Persistence.QuestionRepository;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.ContentDisposition;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,10 +16,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Exporting the question set and importing a replacement, as CSV, JSON or XML.
+ * The questions page, and importing a replacement question set as CSV, JSON or XML.
  *
- * <p>Export is open to anyone. Import replaces the set for every player, so the filter chain
- * keeps it to {@code ROLE_ADMIN} and this class never checks for itself.</p>
+ * <p>Export moved to {@code GET /api/v1/questions/export} (see {@code com.example.api.v1}).
+ * Import replaces the set for every player, so the filter chain keeps it to {@code ROLE_ADMIN}
+ * and this class never checks for itself.</p>
  */
 @Controller
 public class QuestionsController {
@@ -47,22 +43,6 @@ public class QuestionsController {
         model.addAttribute("count", questions.count());
         model.addAttribute("formats", RowFormats.FORMATS);
         return "questions";
-    }
-
-    @GetMapping("/questions/export")
-    public ResponseEntity<ByteArrayResource> export(@RequestParam(defaultValue = "csv") String format) {
-        if (!RowFormats.FORMATS.contains(format)) {
-            return ResponseEntity.badRequest().build();
-        }
-        ByteArrayOutputStream rendered = new ByteArrayOutputStream();
-        formats.of(format).write(rendered, questions.export());
-        ByteArrayResource body = new ByteArrayResource(rendered.toByteArray());
-        return ResponseEntity.ok()
-                .contentType(mediaTypeFor(format))
-                .header("Content-Disposition", ContentDisposition.attachment()
-                        .filename("questions." + format).build().toString())
-                .contentLength(body.contentLength())
-                .body(body);
     }
 
     @PostMapping("/questions/import")
@@ -110,13 +90,5 @@ public class QuestionsController {
             }
         }
         return false;
-    }
-
-    private static MediaType mediaTypeFor(String format) {
-        return switch (format) {
-            case RowFormats.JSON -> MediaType.APPLICATION_JSON;
-            case RowFormats.XML -> MediaType.APPLICATION_XML;
-            default -> MediaType.valueOf("text/csv");
-        };
     }
 }

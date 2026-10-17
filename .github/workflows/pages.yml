@@ -1,13 +1,14 @@
 name: Demo
 
-# Publishes the static demo under site/ to GitHub Pages.
+# Publishes the static demo under site/ to GitHub Pages, plus the generated OpenAPI document.
 #
 # Pages serves files; it does not run the application. What deploys here is the game loop in
 # JavaScript, not the WAR -- accounts, score history and import/export need a server. The demo
 # says so on the page.
 #
 # questions.json is generated here rather than committed, so the demo cannot drift from the
-# question set the real app ships.
+# question set the real app ships. openapi.json is generated the same way, by OpenApiDocumentTest
+# reading the real controllers [25].
 on:
   push:
     branches: [main]
@@ -16,6 +17,8 @@ on:
       - scripts/questions-to-json.py
       - src/main/resources/Data/QuestionData.csv
       - src/main/resources/static/images/Trivial-Trivia.jpg
+      - src/main/java/com/example/api/v1/**
+      - pom.xml
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -39,11 +42,23 @@ jobs:
         with:
           python-version: '3.12'
 
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          java-version: '17'
+          distribution: temurin
+          cache: maven
+
+      # Just the one test: it boots the app and writes target/openapi/openapi.json [25]. The rest
+      # of the suite is CI's job, not this workflow's.
+      - name: Generate the OpenAPI document
+        run: mvn -B -Dtest=OpenApiDocumentTest test
+
       - name: Assemble
         run: |
           mkdir -p _site
           cp site/index.html site/style.css site/demo.js site/theme.js _site/
           cp src/main/resources/static/images/Trivial-Trivia.jpg _site/
+          cp target/openapi/openapi.json _site/openapi.json
           python scripts/questions-to-json.py \
             src/main/resources/Data/QuestionData.csv _site/questions.json
 

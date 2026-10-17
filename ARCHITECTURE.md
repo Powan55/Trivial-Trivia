@@ -192,9 +192,9 @@ the migration off themselves, which is a fair test of whether the seam was where
 says the starter "would put a login wall in front of every route". True of the auto-configured
 default, and not true once there is an explicit chain [6]. The rules:
 
-- public: `/`, `/menu`, `/play/**`, `/questions`, `/questions/export`, `/loginMenu`,
-  `/loginServlet`, `/createUser`, `/guest`, `/error`, static assets. `GET /api/v1/**` and
-  `/actuator/health/**` join them at M3 and M6.
+- public: `/`, `/menu`, `/play/**`, `/questions`, `/api/v1/questions/export`, `/loginMenu`,
+  `/loginServlet`, `/createUser`, `/guest`, `/error`, static assets. `GET /api/v1/**` joins them
+  at M3, and `/actuator/health/**` at M6, once the actuator dependency itself lands.
 - authenticated: `/stats`, and anything not named above, since the chain ends
   `anyRequest().authenticated()`
 - `ROLE_ADMIN`: `/questions/import` and the question management that grows out of it, plus the
@@ -262,19 +262,49 @@ with a stated reason rather than an oversight [21].
 
 `/api/v1`, `@RestController`, records for DTOs, hand-written `from(...)` factories rather than a
 mapping library. `jakarta.validation` on request records for anything a client sends.
+`@Controller` and `@RestController` stay in separate packages: `api/v1` sits next to `Controller/`
+rather than under it, so the mechanical rename to `web/` noted above can still happen on its own
+schedule instead of this milestone waiting on it.
 
-Errors are RFC 7807 through Spring's own `ProblemDetail` and a
+The surface is a REST face on what already exists, not new gameplay: the question set, a
+signed-in player's score history, and who is currently signed in. Registration gets a JSON path
+next to the form post, because it is the one place this milestone has a request body worth
+validating -- without at least one, `spring-boot-starter-validation` would be a dependency with
+nothing to justify its boot cost against [12]. The round in progress does not get a REST face yet.
+`GameService` is still session-scoped [9] until M4 turns it into a stateless `RoundService` keyed
+by a round id, and a versioned API is the wrong place to commit to a shape that milestone is about
+to replace.
+
+`GET /api/v1/**` joins the public routes, the same way `/api/v1/questions/export` already is [6], except
+where a route mirrors something the JSP side keeps behind a session: score history matches
+`/stats` and stays `authenticated()`, listed ahead of the blanket rule the same way `/stats`
+itself is today.
+
+That blanket rule leaves a trap the authorization list alone does not cover. `authenticated()`
+denies inside the security filter chain, before a request ever reaches a controller, so the
+`@RestControllerAdvice` below never runs -- what answers instead is the configured
+`AuthenticationEntryPoint`, and the one `formLogin` installs redirects to `/loginMenu`. A signed-out
+client calling `GET /api/v1/rounds` would get a 302 into an HTML login page instead of a 401. The
+chain needs a second, small entry point and access-denied handler, registered only for
+`/api/v1/**`, that write a `ProblemDetail` body directly instead of redirecting or rendering the
+whitelabel error page.
+
+Errors raised inside a controller are RFC 7807 through Spring's own `ProblemDetail` and a
 `@RestControllerAdvice extends ResponseEntityExceptionHandler`. No problem-details library: the
-framework has had this since Boot 3.
+framework has had this since Boot 3. Validation failures are the superclass's own handling; a
+taken username is the one domain-specific case, mapped to 409; anything left over maps to a
+generic 500 rather than letting a stack trace reach the response body, the same reason the format
+adapters stopped doing that on a bad upload.
 
 No springdoc at runtime. It measured +12.4 MB RSS and +6.7 MB of artifact for a document that
-does not change between deploys, so the OpenAPI JSON is generated at build time and published next
-to the Pages demo instead [15]. The API still has a browsable reference; the running instance does
-not pay for it on every cold start.
-
-`@Controller` and `@RestController` stay in separate packages. A `String` return means one thing
-in one and another thing in the other, and mixing them in a codebase with a JSP view resolver is
-how you get a 500 that says `WEB-INF/views/{"id":1}.jsp`.
+does not change between deploys [15]. What generates it instead is a plain JUnit test carrying
+`springdoc-openapi-starter-webmvc-api` -- no UI, and test-scoped, so it never reaches the WAR the
+same way the JspC precompile tooling already does not. The test boots the app, reads
+`/v3/api-docs`, writes it to `target/openapi/openapi.json`, and asserts the document actually
+contains the new paths, so a regenerated-but-broken file fails the build instead of shipping
+quietly [25]. Publishing it next to the Pages demo means teaching `pages.yml` to run that one test
+and copy the file into `_site/` before the existing assemble step, which is a real addition to a
+workflow that currently runs no Java at all.
 
 ### M4: game depth
 
@@ -337,12 +367,10 @@ a request id in the MDC, taken from `X-Request-Id` when the caller supplies one,
 in a `finally`. Not distributed tracing: there is one service, so there is nothing to propagate
 to, and the tracing bridge plus Brave is a lot of boot time for a correlation id [11].
 
-The host health check moves from `/` to `/actuator/health/liveness`, and this stops being a
-preference the moment M2 lands. Measured: with the security chain on, `/` answers 401 to a request
-with no `Accept` header and 302 to the login page with a browser's. Neither is 2xx, so the deploy
-never goes live. The liveness probe is also the right question. The composite `/actuator/health` goes
-503 when the database is unreachable, which would have the host restart an instance whose only
-problem is a sleeping database.
+The host currently checks `/`, which remains public under the explicit security rules. M6 moves
+the check to `/actuator/health/liveness` so it no longer depends on rendering the landing page.
+Liveness should stay independent of database availability; a sleeping database should not trigger
+an application restart.
 
 Only `health` and `info` are public. Everything else is behind `ROLE_ADMIN`.
 
@@ -392,7 +420,8 @@ Numbers are measured deltas against the current artifact, not estimates.
 | `h2` | M1 | Development and test datastore | Small |
 | `postgresql` | M1 | Production driver | Driver only |
 | `spring-boot-starter-security` | M2 | CSRF, session fixation, roles, form login | Filter chain, ~1.5MB. Absorbs `spring-security-crypto`, which stops being a direct dependency |
-| `spring-boot-starter-validation` | M3 | Constraints at the trust boundary | Hibernate Validator bootstraps at startup |
+| `spring-boot-starter-validation` | M3 | Constraints at the trust boundary | +20.8 MB RSS, +0.14 s startup |
+| `springdoc-openapi-starter-webmvc-api` (test scope) | M3 | Generates the OpenAPI document from the annotated controllers | Build time only; excluded from the WAR, so no runtime cost [25] |
 | `spring-boot-starter-websocket` | M5 | STOMP, in-JVM broker | Moderate; only if M5 ships |
 | `spring-boot-starter-actuator` | M6 | Health, liveness and readiness probes | Small |
 
@@ -400,8 +429,9 @@ Measured and rejected: `spring-boot-starter-data-jpa` at +26.3 MB RSS, +16.1 MB 
 +4.25 s startup and +29.1 MB artifact [4]; `springdoc-openapi-starter-webmvc-ui` at +12.4 MB RSS
 and +6.7 MB artifact [15]; `micrometer-registry-prometheus` at +14.8 MB RSS [16].
 
-Not added, on purpose: JPA and Hibernate [4], springdoc [15], a metrics registry [16], Lombok,
-MapStruct, a problem-details library, a logging encoder, a tracing bridge [11], Redis,
+Not added, on purpose: JPA and Hibernate [4], springdoc's UI/runtime starter [15] (the build-time
+document generator is a different, test-scoped artifact, see [25]), a metrics registry [16],
+Lombok, MapStruct, a problem-details library, a logging encoder, a tracing bridge [11], Redis,
 Testcontainers, Thymeleaf, any JavaScript framework or build step, `spring-security-taglibs`,
 ArchUnit.
 

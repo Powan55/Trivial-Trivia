@@ -4,6 +4,12 @@
 
 ### Added
 
+- SQL storage for accounts, questions and scores, with H2 locally, PostgreSQL in production,
+  and a one-time local import of existing accounts and scores from CSV
+- Spring Security sign-in, CSRF protection, sign-in throttling and administrator-only imports
+- Light and dark themes, shared navigation and responsive layouts
+- A REST API for registration, the current player, question lists and exports, and score history,
+  with generated OpenAPI documentation
 - A hosted instance of the app on Render, built from a `Dockerfile` in the repository
 - The demo page now offers both: play in the browser, or open the full app
 
