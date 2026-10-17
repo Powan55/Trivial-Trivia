@@ -54,10 +54,9 @@ Nothing is written inside the project or into the packaged artifact.
 mvn -B clean verify
 ```
 
-243 JUnit 5 tests: unit tests for the game, the format adapters and the validators, MockMvc tests
-for every route, and a smaller set that boots a real servlet container because MockMvc cannot see
-a JSP actually render. Coverage lands around 97% of lines; the build fails below 85%. The JaCoCo
-report is written to `target/site/jacoco/index.html`.
+JUnit 5 tests cover the game, format adapters, validators, persistence and HTTP routes. Some boot
+a real servlet container to check rendered JSPs. The build requires at least 85% line coverage
+and 80% branch coverage. The JaCoCo report is written to `target/site/jacoco/index.html`.
 
 Two of them are there specifically to stop old bugs coming back:
 `PlayControllerTest.twoSessionsKeepSeparateScores` (the game state used to be a singleton) and

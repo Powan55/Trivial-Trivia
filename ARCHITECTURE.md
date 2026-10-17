@@ -367,12 +367,10 @@ a request id in the MDC, taken from `X-Request-Id` when the caller supplies one,
 in a `finally`. Not distributed tracing: there is one service, so there is nothing to propagate
 to, and the tracing bridge plus Brave is a lot of boot time for a correlation id [11].
 
-The host health check moves from `/` to `/actuator/health/liveness`, and this stops being a
-preference the moment M2 lands. Measured: with the security chain on, `/` answers 401 to a request
-with no `Accept` header and 302 to the login page with a browser's. Neither is 2xx, so the deploy
-never goes live. The liveness probe is also the right question. The composite `/actuator/health` goes
-503 when the database is unreachable, which would have the host restart an instance whose only
-problem is a sleeping database.
+The host currently checks `/`, which remains public under the explicit security rules. M6 moves
+the check to `/actuator/health/liveness` so it no longer depends on rendering the landing page.
+Liveness should stay independent of database availability; a sleeping database should not trigger
+an application restart.
 
 Only `health` and `info` are public. Everything else is behind `ROLE_ADMIN`.
 
