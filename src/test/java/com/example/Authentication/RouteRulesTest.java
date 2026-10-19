@@ -64,9 +64,14 @@ class RouteRulesTest {
                 .andExpect(model().attribute("authenticated", false));
 
         mvc.perform(get("/play").session(session)).andExpect(redirectedUrl("/play/question"));
-        mvc.perform(get("/play/question").session(session)).andExpect(status().isOk());
-        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "no idea"))
-                .andExpect(redirectedUrl("/play/question"));
+        for (int position = 1; position <= 10; position++) {
+            var page = mvc.perform(get("/play/question").session(session)).andExpect(status().isOk()).andReturn();
+            var question = (com.example.Game.Question) page.getModelAndView().getModel().get("question");
+            mvc.perform(post("/play/answer").session(session).with(csrf())
+                    .param("roundId", session.getAttribute("activeRoundId").toString())
+                    .param("position", Integer.toString(position)).param("answer", question.getAnswer()))
+                    .andExpect(redirectedUrl("/play/question"));
+        }
         mvc.perform(get("/play/end").session(session)).andExpect(status().isOk());
     }
 

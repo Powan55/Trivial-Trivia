@@ -88,7 +88,7 @@ class RenderedPagesTest {
                 Arguments.of("/createUser", "Create an account - Trivial Trivia"),
                 Arguments.of("/questions", "Questions - Trivial Trivia"),
                 Arguments.of("/play/question", "Question - Trivial Trivia"),
-                Arguments.of("/play/end", "Game over - Trivial Trivia"));
+                Arguments.of("/play/end", "Question - Trivial Trivia"));
     }
 
     /** The host's health check is a plain GET of "/". Anything but 2xx is a deploy that never goes live. */
@@ -103,7 +103,7 @@ class RenderedPagesTest {
     @ParameterizedTest
     @MethodSource("publicPages")
     void everyPublicPageRendersSignedOut(String path, String title) {
-        ResponseEntity<String> response = rest.getForEntity(path, String.class);
+        ResponseEntity<String> response = rendered(path);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("<title>" + title + "</title>").contains("</html>");
@@ -111,10 +111,63 @@ class RenderedPagesTest {
 
     @Test
     void aGuestCanStartAndSeeAQuestion() {
-        ResponseEntity<String> question = rest.getForEntity("/play/question", String.class);
+        ResponseEntity<String> question = rendered("/play/question");
 
         assertThat(question.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(question.getBody()).contains("Submit answer");
+    }
+
+    @Test
+    void aRenderedRoundKeepsItsPositionOnRefreshAndShowsResultsOnlyWhenFinished() {
+        int total = questions.count();
+        Map<String, String> jar = new LinkedHashMap<>();
+        ResponseEntity<String> missing = get("/play/end", null);
+        assertThat(missing.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(missing.getHeaders().getFirst(HttpHeaders.LOCATION)).endsWith("/play");
+
+        ResponseEntity<String> started = get("/play", null);
+        collectCookies(jar, started);
+        ResponseEntity<String> page = get("/play/question", cookieHeader(jar));
+        collectCookies(jar, page);
+        String roundId = hiddenIn(page.getBody(), "roundId");
+        assertThat(roundId).matches("[1-9][0-9]*");
+        String firstQuestion = page.getBody().substring(page.getBody().indexOf("<h1 id=\"question-heading\""),
+                page.getBody().indexOf("</h1>") + 5);
+
+        ResponseEntity<String> early = get("/play/end", cookieHeader(jar));
+        assertThat(early.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(early.getHeaders().getFirst(HttpHeaders.LOCATION)).endsWith("/play/question");
+        ResponseEntity<String> refreshed = get("/play/question", cookieHeader(jar));
+        collectCookies(jar, refreshed);
+        assertThat(refreshed.getBody()).contains(firstQuestion);
+        assertThat(hiddenIn(refreshed.getBody(), "roundId")).isEqualTo(roundId);
+        assertThat(hiddenIn(refreshed.getBody(), "position")).isEqualTo("1");
+
+        int answered = 0;
+        page = refreshed;
+        while (page.getStatusCode() == HttpStatus.OK) {
+            assertThat(++answered).isLessThanOrEqualTo(total);
+            String body = page.getBody();
+            assertThat(hiddenIn(body, "roundId")).isEqualTo(roundId);
+            assertThat(hiddenIn(body, "position")).isEqualTo(Integer.toString(answered));
+            Matcher option = Pattern.compile("name=\"answer\"\\s+value=\"([^\"]*)\"").matcher(body);
+            assertThat(option.find()).isTrue();
+            ResponseEntity<String> submitted = post("/play/answer", cookieHeader(jar),
+                    field("roundId", roundId), field("position", hiddenIn(body, "position")),
+                    field("answer", org.springframework.web.util.HtmlUtils.htmlUnescape(option.group(1))),
+                    field("_csrf", tokenIn(body)));
+            assertThat(submitted.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+            collectCookies(jar, submitted);
+            page = get("/play/question", cookieHeader(jar));
+            collectCookies(jar, page);
+        }
+        assertThat(answered).isEqualTo(total);
+        assertThat(page.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(page.getHeaders().getFirst(HttpHeaders.LOCATION)).endsWith("/play/end");
+        ResponseEntity<String> result = get("/play/end", cookieHeader(jar));
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).contains("<title>Game over - Trivial Trivia</title>");
+        assertThat(get("/play/end", cookieHeader(jar)).getBody()).contains("<title>Game over - Trivial Trivia</title>");
     }
 
     /** Export is open to anyone, and it is the one public route that renders no view at all. */
@@ -140,7 +193,7 @@ class RenderedPagesTest {
     @ParameterizedTest
     @MethodSource("pagesWithForms")
     void everyRenderedFormCarriesARealCsrfToken(String path, String title) {
-        String body = rest.getForEntity(path, String.class).getBody();
+        String body = rendered(path).getBody();
 
         assertThat(body).contains("<title>" + title + "</title>");
         assertThat(tokenIn(body)).isNotBlank();
@@ -149,7 +202,7 @@ class RenderedPagesTest {
     @ParameterizedTest
     @MethodSource("publicPages")
     void everyPageCarriesAContentSecurityPolicy(String path, String title) {
-        ResponseEntity<String> page = rest.getForEntity(path, String.class);
+        ResponseEntity<String> page = rendered(path);
 
         assertThat(page.getBody()).contains("<title>" + title + "</title>");
         assertThat(policyOf(page)).contains("default-src 'self'")
@@ -167,7 +220,7 @@ class RenderedPagesTest {
     @ParameterizedTest
     @MethodSource("publicPages")
     void theInlineScriptCarriesTheNonceTheHeaderAllows(String path, String title) {
-        ResponseEntity<String> page = rest.getForEntity(path, String.class);
+        ResponseEntity<String> page = rendered(path);
 
         assertThat(page.getBody()).contains("<title>" + title + "</title>");
         Matcher onTheTag = Pattern.compile("<script nonce=\"([^\"]+)\"").matcher(page.getBody());
@@ -383,6 +436,19 @@ class RenderedPagesTest {
         return direct.exchange(url(path), HttpMethod.GET, new HttpEntity<>(headers), String.class);
     }
 
+    private ResponseEntity<String> rendered(String path) {
+        Map<String, String> jar = new LinkedHashMap<>();
+        for (int redirects = 0; redirects < 5; redirects++) {
+            ResponseEntity<String> page = get(path, cookieHeader(jar));
+            collectCookies(jar, page);
+            if (!page.getStatusCode().is3xxRedirection()) {
+                return page;
+            }
+            path = page.getHeaders().getLocation().getPath();
+        }
+        throw new AssertionError("Too many redirects rendering " + path);
+    }
+
     private String url(String path) {
         return "http://localhost:" + port + path;
     }
@@ -448,8 +514,12 @@ class RenderedPagesTest {
     }
 
     private static String tokenIn(String body) {
-        Matcher token = Pattern.compile("name=\"_csrf\" value=\"([^\"]*)\"").matcher(body);
-        assertThat(token.find()).as("a hidden token in the page").isTrue();
+        return hiddenIn(body, "_csrf");
+    }
+
+    private static String hiddenIn(String body, String name) {
+        Matcher token = Pattern.compile("name=\"" + Pattern.quote(name) + "\" value=\"([^\"]*)\"").matcher(body);
+        assertThat(token.find()).as("hidden %s in the page", name).isTrue();
         return token.group(1);
     }
 

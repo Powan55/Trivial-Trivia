@@ -32,6 +32,8 @@
 
             <form action="${pageContext.request.contextPath}/play/answer" method="post">
                 <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
+                <input type="hidden" name="roundId" value="<c:out value='${roundId}'/>">
+                <input type="hidden" name="position" value="<c:out value='${position}'/>">
                 <fieldset class="options" aria-labelledby="question-heading">
                     <c:forEach var="index" begin="1" end="4">
                         <div class="option">
