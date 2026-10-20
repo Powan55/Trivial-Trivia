@@ -30,7 +30,7 @@ mvn spring-boot:run
 
 `site/` is the GitHub Pages demo and it is not the app — it is the game loop in JavaScript, for
 people who want to click something before cloning anything. If you change how a round is scored in
-`GameService`, change `site/demo.js` to match; nothing enforces that but a comment at the top of
+`RoundService`, change `site/demo.js` to match; nothing enforces that but a comment at the top of
 the file.
 
 `questions.json` and the logo in `site/` are generated at deploy time and gitignored. The README

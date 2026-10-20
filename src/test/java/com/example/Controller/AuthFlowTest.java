@@ -87,8 +87,7 @@ class AuthFlowTest {
         MockHttpSession session = register("flow_score", "Ada Lovelace");
 
         mvc.perform(get("/play").session(session));
-        Question first = question(session);
-        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", first.getAnswer()));
+        finish(session, true);
         mvc.perform(get("/play/end").session(session)).andExpect(model().attribute("score", 10));
 
         mvc.perform(get("/stats").session(session))
@@ -101,8 +100,7 @@ class AuthFlowTest {
         MockHttpSession session = register("flow_refresh", "Ada Lovelace");
 
         mvc.perform(get("/play").session(session));
-        Question first = question(session);
-        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", first.getAnswer()));
+        finish(session, true);
         mvc.perform(get("/play/end").session(session));
         mvc.perform(get("/play/end").session(session));
         mvc.perform(get("/play/end").session(session));
@@ -116,9 +114,7 @@ class AuthFlowTest {
         MockHttpSession session = register("flow_verdict", "Ada Lovelace");
 
         mvc.perform(get("/play").session(session));
-        while (question(session) != null) {
-            mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "definitely wrong"));
-        }
+        finish(session, false);
 
         mvc.perform(get("/play/end").session(session))
                 .andExpect(model().attribute("answerCorrect", false))
@@ -136,14 +132,28 @@ class AuthFlowTest {
         mvc.perform(get("/guest").session(session));
 
         mvc.perform(get("/play").session(session));
-        Question first = question(session);
-        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", first.getAnswer()));
+        finish(session, true);
         mvc.perform(get("/play/end").session(session)).andExpect(model().attribute("authenticated", false));
 
         mvc.perform(get("/stats").session(session))
                 .andExpect(redirectedUrl("http://localhost/loginMenu"));
     }
 
+    private void finish(MockHttpSession session, boolean firstCorrect) throws Exception {
+        int position = 1;
+        Question asked;
+        while ((asked = question(session)) != null) {
+            Question current = asked;
+            String wrong = java.util.stream.IntStream.rangeClosed(1, 4).mapToObj(current::getOption)
+                    .filter(option -> !option.equals(current.getAnswer())).findFirst().orElseThrow();
+            mvc.perform(post("/play/answer").session(session).with(csrf())
+                    .param("roundId", Integer.toString(((PlayController.ActiveRound) session.getAttribute("activeRound")).id()))
+                    .param("position", Integer.toString(position))
+                    .param("answer", firstCorrect && position == 1 ? asked.getAnswer() : wrong))
+                    .andExpect(redirectedUrl("/play/question"));
+            position++;
+        }
+    }
     private MockHttpSession register(String username, String name) throws Exception {
         MockHttpSession session = new MockHttpSession();
         mvc.perform(post("/createUser").session(session).with(csrf())
@@ -157,5 +167,21 @@ class AuthFlowTest {
         return result.getModelAndView() == null
                 ? null
                 : (Question) result.getModelAndView().getModel().get("question");
+    }
+    @Test
+    void guestRoundCannotAttachToAccountAfterLoginInSameSession() throws Exception {
+        register("flow_transition", "Player");
+        var session = new MockHttpSession();
+        mvc.perform(get("/play").session(session));
+        Question asked = question(session);
+        String id = Integer.toString(((PlayController.ActiveRound) session.getAttribute("activeRound")).id());
+        mvc.perform(post("/loginServlet").session(session).with(csrf())
+                .param("username", "flow_transition").param("password", "correct horse"))
+                .andExpect(redirectedUrl("/menu"));
+        mvc.perform(post("/play/answer").session(session).with(csrf())
+                .param("roundId", id).param("position", "1").param("answer", asked.getAnswer()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isConflict());
+        var stats = mvc.perform(get("/stats").session(session)).andReturn();
+        assertThat((java.util.List<?>) stats.getModelAndView().getModel().get("scores")).isEmpty();
     }
 }

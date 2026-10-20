@@ -3,9 +3,7 @@ package com.example.Controller;
 import java.util.Map;
 
 import com.example.Authentication.CurrentPlayer;
-import com.example.Game.Question;
-import com.example.Persistence.RoundRepository;
-import com.example.Service.GameService;
+import com.example.Service.RoundService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -13,75 +11,90 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.servlet.support.RequestContextUtils;
 
-/**
- * Drives a round: start, one question at a time, then the final score.
- */
 @Controller
 @RequestMapping("/play")
 public class PlayController {
-
-    private final GameService gameService;
-    private final RoundRepository rounds;
+    private static final String ACTIVE_ROUND = "activeRound";
+    private final RoundService rounds;
     private final CurrentPlayer user;
 
-    public PlayController(GameService gameService, RoundRepository rounds, CurrentPlayer user) {
-        this.gameService = gameService;
+    public PlayController(RoundService rounds, CurrentPlayer user) {
         this.rounds = rounds;
         this.user = user;
     }
 
     @GetMapping
-    public String startGame() {
-        gameService.startGame();
+    public String startGame(HttpServletRequest request) {
+        var session = request.getSession();
+        String owner = java.util.UUID.randomUUID().toString();
+        int id = rounds.start(owner, user.getUsername());
+        session.setAttribute(ACTIVE_ROUND, new ActiveRound(id, owner));
         return "redirect:/play/question";
     }
 
     @GetMapping("/question")
     public String getQuestion(Model model, HttpServletRequest request, RedirectAttributes feedback) {
-        Question question = gameService.getNextQuestion();
-        if (question == null) {
-            // The last answer's verdict was flashed at this hop, which is only a staging post once
-            // the round is over. Pass it on so the end page can show it.
+        ActiveRound active = active(request);
+        if (active == null) {
+            return "redirect:/play";
+        }
+        RoundService.Page page = rounds.serve(active.id(), active.ownerToken(), user.getUsername());
+        if (page == null) {
             Map<String, ?> carried = RequestContextUtils.getInputFlashMap(request);
             if (carried != null) {
                 carried.forEach(feedback::addFlashAttribute);
             }
             return "redirect:/play/end";
         }
-        model.addAttribute("question", question);
-        model.addAttribute("questionNumber", gameService.getQuestionNumber());
-        model.addAttribute("totalQuestions", gameService.getTotalQuestions());
+        model.addAttribute("question", page.question());
+        model.addAttribute("roundId", page.roundId());
+        model.addAttribute("position", page.position());
+        model.addAttribute("questionNumber", page.position());
+        model.addAttribute("totalQuestions", page.total());
         return "questionPage";
     }
 
     @PostMapping("/answer")
-    public String submitAnswer(@RequestParam String answer, RedirectAttributes feedback) {
-        Question asked = gameService.getCurrentQuestion();
-        if (asked == null) {
-            return "redirect:/play/question";
+    public String submitAnswer(@RequestParam int roundId, @RequestParam int position,
+            @RequestParam String answer, HttpServletRequest request, RedirectAttributes feedback) {
+        ActiveRound active = active(request);
+        if (active == null || active.id() != roundId) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Round is no longer active");
         }
-        boolean correct = gameService.submitAnswer(asked, answer);
-        feedback.addFlashAttribute("answerCorrect", correct);
-        if (!correct) {
-            feedback.addFlashAttribute("correctAnswer", asked.getAnswer());
+        var verdict = rounds.answer(roundId, position, answer, active.ownerToken(), user.getUsername());
+        feedback.addFlashAttribute("answerCorrect", verdict.correct());
+        if (!verdict.correct()) {
+            feedback.addFlashAttribute("correctAnswer", verdict.correctAnswer());
         }
         return "redirect:/play/question";
     }
 
     @GetMapping("/end")
-    public String endGame(Model model) {
-        // A guest's round is not stored: there is nothing to key it to.
-        if (gameService.claimUnrecordedRound() && user.isAuthenticated()) {
-            rounds.record(user.getUsername(), gameService.getScore(),
-                    gameService.getRight(), gameService.getWrong());
+    public String endGame(Model model, HttpServletRequest request) {
+        ActiveRound active = active(request);
+        if (active == null) {
+            return "redirect:/play";
         }
-        model.addAttribute("score", gameService.getScore());
-        model.addAttribute("right", gameService.getRight());
-        model.addAttribute("wrong", gameService.getWrong());
+        var summary = rounds.summary(active.id(), active.ownerToken(), user.getUsername());
+        if (!summary.finished()) {
+            return "redirect:/play/question";
+        }
+        model.addAttribute("score", summary.score());
+        model.addAttribute("right", summary.right());
+        model.addAttribute("wrong", summary.wrong());
         model.addAttribute("authenticated", user.isAuthenticated());
         return "endGamePage";
     }
+
+    private ActiveRound active(HttpServletRequest request) {
+        var session = request.getSession(false);
+        return session == null ? null : (ActiveRound) session.getAttribute(ACTIVE_ROUND);
+    }
+
+    public record ActiveRound(int id, String ownerToken) { }
 }

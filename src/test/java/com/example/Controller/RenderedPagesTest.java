@@ -3,10 +3,12 @@ package com.example.Controller;
 import java.net.http.HttpClient;
 import java.net.http.HttpClient.Redirect;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.example.Persistence.QuestionRepository;
@@ -86,7 +88,7 @@ class RenderedPagesTest {
                 Arguments.of("/createUser", "Create an account - Trivial Trivia"),
                 Arguments.of("/questions", "Questions - Trivial Trivia"),
                 Arguments.of("/play/question", "Question - Trivial Trivia"),
-                Arguments.of("/play/end", "Game over - Trivial Trivia"));
+                Arguments.of("/play/end", "Question - Trivial Trivia"));
     }
 
     /** The host's health check is a plain GET of "/". Anything but 2xx is a deploy that never goes live. */
@@ -101,7 +103,7 @@ class RenderedPagesTest {
     @ParameterizedTest
     @MethodSource("publicPages")
     void everyPublicPageRendersSignedOut(String path, String title) {
-        ResponseEntity<String> response = rest.getForEntity(path, String.class);
+        ResponseEntity<String> response = rendered(path);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).contains("<title>" + title + "</title>").contains("</html>");
@@ -109,16 +111,69 @@ class RenderedPagesTest {
 
     @Test
     void aGuestCanStartAndSeeAQuestion() {
-        ResponseEntity<String> question = rest.getForEntity("/play/question", String.class);
+        ResponseEntity<String> question = rendered("/play/question");
 
         assertThat(question.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(question.getBody()).contains("Submit answer");
     }
 
+    @Test
+    void aRenderedRoundKeepsItsPositionOnRefreshAndShowsResultsOnlyWhenFinished() {
+        int total = questions.count();
+        Map<String, String> jar = new LinkedHashMap<>();
+        ResponseEntity<String> missing = get("/play/end", null);
+        assertThat(missing.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(missing.getHeaders().getFirst(HttpHeaders.LOCATION)).endsWith("/play");
+
+        ResponseEntity<String> started = get("/play", null);
+        collectCookies(jar, started);
+        ResponseEntity<String> page = get("/play/question", cookieHeader(jar));
+        collectCookies(jar, page);
+        String roundId = hiddenIn(page.getBody(), "roundId");
+        assertThat(roundId).matches("[1-9][0-9]*");
+        String firstQuestion = page.getBody().substring(page.getBody().indexOf("<h1 id=\"question-heading\""),
+                page.getBody().indexOf("</h1>") + 5);
+
+        ResponseEntity<String> early = get("/play/end", cookieHeader(jar));
+        assertThat(early.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(early.getHeaders().getFirst(HttpHeaders.LOCATION)).endsWith("/play/question");
+        ResponseEntity<String> refreshed = get("/play/question", cookieHeader(jar));
+        collectCookies(jar, refreshed);
+        assertThat(refreshed.getBody()).contains(firstQuestion);
+        assertThat(hiddenIn(refreshed.getBody(), "roundId")).isEqualTo(roundId);
+        assertThat(hiddenIn(refreshed.getBody(), "position")).isEqualTo("1");
+
+        int answered = 0;
+        page = refreshed;
+        while (page.getStatusCode() == HttpStatus.OK) {
+            assertThat(++answered).isLessThanOrEqualTo(total);
+            String body = page.getBody();
+            assertThat(hiddenIn(body, "roundId")).isEqualTo(roundId);
+            assertThat(hiddenIn(body, "position")).isEqualTo(Integer.toString(answered));
+            Matcher option = Pattern.compile("name=\"answer\"\\s+value=\"([^\"]*)\"").matcher(body);
+            assertThat(option.find()).isTrue();
+            ResponseEntity<String> submitted = post("/play/answer", cookieHeader(jar),
+                    field("roundId", roundId), field("position", hiddenIn(body, "position")),
+                    field("answer", org.springframework.web.util.HtmlUtils.htmlUnescape(option.group(1))),
+                    field("_csrf", tokenIn(body)));
+            assertThat(submitted.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+            collectCookies(jar, submitted);
+            page = get("/play/question", cookieHeader(jar));
+            collectCookies(jar, page);
+        }
+        assertThat(answered).isEqualTo(total);
+        assertThat(page.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(page.getHeaders().getFirst(HttpHeaders.LOCATION)).endsWith("/play/end");
+        ResponseEntity<String> result = get("/play/end", cookieHeader(jar));
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).contains("<title>Game over - Trivial Trivia</title>");
+        assertThat(get("/play/end", cookieHeader(jar)).getBody()).contains("<title>Game over - Trivial Trivia</title>");
+    }
+
     /** Export is open to anyone, and it is the one public route that renders no view at all. */
     @Test
     void theQuestionSetExportsToAnyone() {
-        ResponseEntity<String> export = rest.getForEntity("/questions/export?format=csv", String.class);
+        ResponseEntity<String> export = rest.getForEntity("/api/v1/questions/export?format=csv", String.class);
 
         assertThat(export.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(export.getBody()).startsWith("\"Question\",\"Option1\"");
@@ -138,7 +193,7 @@ class RenderedPagesTest {
     @ParameterizedTest
     @MethodSource("pagesWithForms")
     void everyRenderedFormCarriesARealCsrfToken(String path, String title) {
-        String body = rest.getForEntity(path, String.class).getBody();
+        String body = rendered(path).getBody();
 
         assertThat(body).contains("<title>" + title + "</title>");
         assertThat(tokenIn(body)).isNotBlank();
@@ -147,7 +202,7 @@ class RenderedPagesTest {
     @ParameterizedTest
     @MethodSource("publicPages")
     void everyPageCarriesAContentSecurityPolicy(String path, String title) {
-        ResponseEntity<String> page = rest.getForEntity(path, String.class);
+        ResponseEntity<String> page = rendered(path);
 
         assertThat(page.getBody()).contains("<title>" + title + "</title>");
         assertThat(policyOf(page)).contains("default-src 'self'")
@@ -165,7 +220,7 @@ class RenderedPagesTest {
     @ParameterizedTest
     @MethodSource("publicPages")
     void theInlineScriptCarriesTheNonceTheHeaderAllows(String path, String title) {
-        ResponseEntity<String> page = rest.getForEntity(path, String.class);
+        ResponseEntity<String> page = rendered(path);
 
         assertThat(page.getBody()).contains("<title>" + title + "</title>");
         Matcher onTheTag = Pattern.compile("<script nonce=\"([^\"]+)\"").matcher(page.getBody());
@@ -207,7 +262,12 @@ class RenderedPagesTest {
         List<String[]> shipped = questions.export();
         try {
             String cookie = signInAsAdmin("render_admin");
-            String page = get("/questions", cookie).getBody();
+            // CsrfAuthenticationStrategy deletes the CSRF cookie on sign-in and regenerates it
+            // "upon the next request" (its own javadoc) rather than on the sign-in response
+            // itself, so this GET is what actually produces the cookie the import below needs.
+            ResponseEntity<String> questionsPage = get("/questions", cookie);
+            cookie = withUpdatedCookies(cookie, questionsPage);
+            String page = questionsPage.getBody();
             assertThat(page).contains("<title>Questions - Trivial Trivia</title>")
                     .contains("<label for=\"file\">");
 
@@ -278,6 +338,33 @@ class RenderedPagesTest {
         assertThat(asAdmin).contains(IMPORT_FORM).doesNotContain("needs an administrator account");
     }
 
+    /**
+     * The other tests in this class prove sign-out only by asserting the form's markup is
+     * present, never by submitting it. This is the real round trip: the session that answers
+     * `/stats` before this POST must not answer it after.
+     */
+    @Test
+    void signingOutEndsTheSessionForReal() {
+        String cookie = signInAsPlayer("render_signout");
+
+        ResponseEntity<String> menu = get("/menu", cookie);
+        cookie = withUpdatedCookies(cookie, menu);
+        assertThat(menu.getBody()).contains(SIGN_OUT_FORM);
+
+        ResponseEntity<String> signedOut = post("/logout", cookie, field("_csrf", tokenIn(menu.getBody())));
+        assertThat(signedOut.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(signedOut.getHeaders().getFirst(HttpHeaders.LOCATION)).endsWith("/loginMenu");
+
+        // `direct` doesn't follow redirects (needed above, to read the Location header itself),
+        // so the actual "am I still signed in" check needs `rest`, which does.
+        cookie = withUpdatedCookies(cookie, signedOut);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.COOKIE, cookie);
+        ResponseEntity<String> stats = rest.exchange("/stats", HttpMethod.GET,
+                new HttpEntity<>(headers), String.class);
+        assertThat(stats.getBody()).contains("<title>Sign in - Trivial Trivia</title>");
+    }
+
     /** Rendered only when the request carries a principal, so it doubles as "am I signed in". */
     private static final String SIGN_OUT_FORM = "action=\"/logout\" method=\"post\"";
     private static final String IMPORT_FORM = "action=\"/questions/import\"";
@@ -296,8 +383,10 @@ class RenderedPagesTest {
     }
 
     private void register(String username) {
+        Map<String, String> jar = new LinkedHashMap<>();
         ResponseEntity<String> form = get("/createUser", null);
-        ResponseEntity<String> registered = post("/createUser", cookieIn(form),
+        collectCookies(jar, form);
+        ResponseEntity<String> registered = post("/createUser", cookieHeader(jar),
                 field("name", "Ada Lovelace"), field("username", username),
                 field("password", "correct horse"), field("_csrf", tokenIn(form.getBody())));
 
@@ -306,15 +395,23 @@ class RenderedPagesTest {
     }
 
     private String signIn(String username) {
+        // Two cookies now carry the round trip: JSESSIONID for the session, XSRF-TOKEN for the
+        // CSRF repository. A browser sends every cookie it holds, not just the newest one, so the
+        // jar has to be merged rather than replaced.
+        Map<String, String> jar = new LinkedHashMap<>();
         ResponseEntity<String> page = get("/loginMenu", null);
-        ResponseEntity<String> signedIn = post("/loginServlet", cookieIn(page),
+        collectCookies(jar, page);
+        ResponseEntity<String> signedIn = post("/loginServlet", cookieHeader(jar),
                 field("username", username), field("password", "correct horse"),
                 field("_csrf", tokenIn(page.getBody())));
 
         assertThat(signedIn.getStatusCode()).isEqualTo(HttpStatus.FOUND);
         assertThat(signedIn.getHeaders().getFirst(HttpHeaders.LOCATION)).endsWith("/menu");
-        // Session fixation changed the id, so the cookie to carry is the one on this response.
-        return cookieIn(signedIn);
+        // Session fixation rotates JSESSIONID and CsrfAuthenticationStrategy rotates the CSRF
+        // token on the same request; merging keeps whichever of the two changed and whichever
+        // didn't.
+        collectCookies(jar, signedIn);
+        return cookieHeader(jar);
     }
 
     @SafeVarargs
@@ -337,6 +434,19 @@ class RenderedPagesTest {
             headers.add(HttpHeaders.COOKIE, cookie);
         }
         return direct.exchange(url(path), HttpMethod.GET, new HttpEntity<>(headers), String.class);
+    }
+
+    private ResponseEntity<String> rendered(String path) {
+        Map<String, String> jar = new LinkedHashMap<>();
+        for (int redirects = 0; redirects < 5; redirects++) {
+            ResponseEntity<String> page = get(path, cookieHeader(jar));
+            collectCookies(jar, page);
+            if (!page.getStatusCode().is3xxRedirection()) {
+                return page;
+            }
+            path = page.getHeaders().getLocation().getPath();
+        }
+        throw new AssertionError("Too many redirects rendering " + path);
     }
 
     private String url(String path) {
@@ -363,18 +473,53 @@ class RenderedPagesTest {
         return Map.entry(name, value);
     }
 
-    private static String cookieIn(ResponseEntity<String> response) {
+    private static void collectCookies(Map<String, String> jar, ResponseEntity<?> response) {
         List<String> cookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
-        if (cookies == null || cookies.isEmpty()) {
+        if (cookies == null) {
+            return;
+        }
+        for (String cookie : cookies) {
+            String pair = cookie.substring(0, cookie.indexOf(';'));
+            String name = pair.substring(0, pair.indexOf('='));
+            String value = pair.substring(pair.indexOf('=') + 1);
+            // CsrfAuthenticationStrategy deletes the CSRF cookie on sign-in (empty value,
+            // Max-Age=0) rather than rotating it in place. A real browser drops a deleted
+            // cookie instead of resending it, so the jar has to as well.
+            if (value.isEmpty()) {
+                jar.remove(name);
+            } else {
+                jar.put(name, value);
+            }
+        }
+    }
+
+    private static String withUpdatedCookies(String cookie, ResponseEntity<?> response) {
+        Map<String, String> jar = new LinkedHashMap<>();
+        if (cookie != null) {
+            for (String pair : cookie.split("; ")) {
+                jar.put(pair.substring(0, pair.indexOf('=')), pair.substring(pair.indexOf('=') + 1));
+            }
+        }
+        collectCookies(jar, response);
+        return cookieHeader(jar);
+    }
+
+    private static String cookieHeader(Map<String, String> jar) {
+        if (jar.isEmpty()) {
             return null;
         }
-        String session = cookies.get(cookies.size() - 1);
-        return session.substring(0, session.indexOf(';'));
+        return jar.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .collect(Collectors.joining("; "));
     }
 
     private static String tokenIn(String body) {
-        Matcher token = Pattern.compile("name=\"_csrf\" value=\"([^\"]*)\"").matcher(body);
-        assertThat(token.find()).as("a hidden token in the page").isTrue();
+        return hiddenIn(body, "_csrf");
+    }
+
+    private static String hiddenIn(String body, String name) {
+        Matcher token = Pattern.compile("name=\"" + Pattern.quote(name) + "\" value=\"([^\"]*)\"").matcher(body);
+        assertThat(token.find()).as("hidden %s in the page", name).isTrue();
         return token.group(1);
     }
 

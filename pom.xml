@@ -23,6 +23,7 @@
         <jacoco.version>0.8.13</jacoco.version>
         <opencsv.version>5.10</opencsv.version>
         <ant.version>1.10.15</ant.version>
+        <springdoc.version>2.9.0</springdoc.version>
     </properties>
 
     <dependencies>
@@ -59,6 +60,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Constraints at the trust boundary for whatever the API accepts as a request body. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
         <!-- JdbcClient and a connection pool. Not JPA: Hibernate measured +26.3 MB RSS and
@@ -109,6 +116,15 @@
             <groupId>org.apache.ant</groupId>
             <artifactId>ant</artifactId>
             <version>${ant.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Core OpenAPI generator only, no UI: the document comes from OpenApiDocumentTest at
+             build time, not from a running endpoint. Test scope keeps it out of the WAR. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+            <version>${springdoc.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -295,17 +295,17 @@ shared one score. That fix was right and the scope is now the thing in the way. 
 round lives only in memory, so a restart loses it, the server cannot prove when a question was
 served, and a multiplayer room is not a session and cannot reach it.
 
-**Decision.** At M4, when the timer arrives, it becomes a stateless singleton `RoundService` that
-takes a round id. The session holds the id and nothing else. Round state lives in `rounds` and
-`round_questions`.
+**Decision.** `RoundService` is a stateless singleton that takes a round id. The session holds the
+active round id and a random ownership nonce. Round state lives in `rounds` and `round_questions`.
+The nonce binds guest rounds to their session without storing the HTTP session credential in the
+database; signed-in rounds also check account ownership.
 
 **Consequences.** One scoring implementation with three callers: the JSP controllers, the API, and
 a multiplayer room. That is enough callers to justify the extraction; with one it would not have
 been.
 
-`PlayControllerTest.twoSessionsKeepSeparateScores` is named in the README as a guard against #61
-coming back. It must be re-expressed as "two sessions hold two different round ids", not deleted.
-The bug it guards against is still possible, just in a new dialect.
+`PlayControllerTest.sessionsKeepQuestionsAndScoresSeparate` guards against #61 by checking that two
+sessions hold different rounds and cannot submit each other's answers.
 
 Not done at M1, deliberately. M1 is already a datastore change; moving the round out of the session
 in the same milestone makes both harder to review.
@@ -618,9 +618,9 @@ of this applies to it. That is also the day the JSP goes, so not soon.
 
 ---
 
-## 20. `round_questions` is deferred to M4, with its foreign key still open
+## 20. Rounds keep immutable question snapshots
 
-**Status:** deferred, forced at M4
+**Status:** accepted, resolves the M1 deferral
 
 **Context.** M1 shipped `users`, `categories`, `questions` and `rounds`, and not
 `round_questions`. That was a choice, not an oversight, and it deserves recording so it does not
@@ -636,22 +636,26 @@ options, none of them free:
 - `RESTRICT` keeps the history intact and makes import fail as soon as anybody has played, which
   breaks a feature the README advertises.
 
-The way out is probably versioning: an import adds a new generation of questions rather than
-replacing rows, and old answers keep pointing at the generation they were asked from. That is a
-schema decision with real weight, and M4 is where it belongs, because M4 designs the timer and
-needs `served_at` in the same table. Deciding it now would mean deciding it with less information
-than the person implementing it will have.
+**Decision.** Starting a round copies its ordered questions, options and correct answers into
+`round_questions`, with no foreign key to the mutable question bank. Imports still replace that
+bank in one transaction. Active rounds and answer history retain the content they started with.
+Snapshots avoid introducing question generations solely to preserve those copies.
 
-**Decision.** Defer. M1 stores the round-level score, which is all the score history and the
-leaderboard need. M4 adds the table and picks the policy in the same slice.
+The session holds the active round ID and ownership nonce [9]. Submitted round IDs must match it, and signed-in players
+must also own the stored round. Guest rounds remain tied to that session and are never reassigned
+to an account after sign-in. Each answer identifies its round and position.
 
-**Consequences.** Nothing in M1 is shaped around a table that does not exist yet, and expand and
-contract [14] makes the deferral cheap: adding `round_questions` later is purely additive, with no
-backfill and no rewrite of a shipped migration.
+Serving or answering a question locks the parent round row in one transaction. Refreshes retain
+the unanswered question and its first `served_at`; repeated answers return the stored verdict.
+The answer, score counters and completion timestamp change atomically. Only the last answer
+finishes a round; visiting the results page writes nothing.
 
-The deadline is not soft. A server-authoritative per-question timer cannot exist without a durable
-`served_at` per question, so M4 cannot start without settling this. That is the forcing function,
-and it is better than a note in a backlog.
+**Consequences.** Question text is duplicated per round, but imports cannot erase history or
+change an answer during play. Existing completed scores need no snapshot backfill. Guest progress
+still requires its session to remain accessible.
+
+Revisit if snapshot storage becomes material, or players need to resume rounds after their session
+expires.
 
 ---
 
@@ -830,3 +834,102 @@ is a second administrator worth managing, and not worth an admin screen before t
 
 Revisit when there is more than one administrator, at which point this stops being a boot argument
 and becomes a role assignment with an audit trail.
+
+---
+
+## 25. The OpenAPI document is generated by a test-scoped springdoc, not a plugin against a running app
+
+**Status:** accepted
+
+**Context.** Decision 15 ruled out serving the document from the running app and said it would be
+generated at build time instead, without picking a mechanism. Three were on the table:
+
+- `springdoc-openapi-maven-plugin`, which boots the actual application and reads its live
+  `/v3/api-docs`. That needs the `-ui` or `-webmvc` starter as a real compile/runtime dependency of
+  the app so there is a live endpoint to read, which reintroduces the exact RSS and artifact cost
+  decision 15 measured and rejected. The plugin changes nothing about that starter's scope.
+- A hand-written OpenAPI document, checked in like any other file. No dependency at all, but every
+  new endpoint, DTO field or `jakarta.validation` constraint is a second place to update, and
+  nothing fails the build when the two drift apart.
+- A JUnit test that carries `springdoc-openapi-starter-webmvc-api` — the core generator, no Swagger
+  UI — as a test-scoped dependency, boots the app the way the rest of the suite already does, reads
+  `/v3/api-docs`, and writes it to a file.
+
+**Decision.** The third option. Test scope means the dependency is on the classpath for `mvn
+test`/`verify` and absent from the packaged WAR — the same separation `org.apache.ant:ant` already
+relies on for the JspC precompile step, which also runs during the build and ships in nothing. The
+document comes from the real controllers and their real validation constraints, so it cannot drift
+the way a hand-written one can, and the test asserts the generated document actually contains the
+milestone's paths, so a broken generation run fails `mvn -B clean verify` rather than quietly
+publishing a stale or empty file.
+
+**Consequences.** One more test class, and swagger-core and swagger-models sit on the test
+classpath for the length of a build — real minutes, not real megabytes in the artifact, and nothing
+the running instance ever loads. `pages.yml`, which currently runs no Java at all, needs a
+`setup-java` step and one Maven invocation ahead of its existing assemble step, and its trigger
+paths need to cover the API sources so a controller change re-publishes the document. That is a
+real change to a workflow nobody has touched since it was written, not a free add-on.
+
+Revisit if Boot ever drops `/v3/api-docs` from the core generator artifact and folds it into the UI
+starter, at which point this decision and 15 collapse into the same trade-off they are trying to
+keep apart.
+
+---
+
+## 26. `RegistrationController.signIn` duplicates `AccountController.signIn`, on purpose, for one milestone
+
+**Status:** accepted, temporary
+
+**Context.** `POST /api/v1/users` [M3] signs the new account in the same way the JSP registration
+flow does: same session-fixation guard, same `SecurityContext`/`UsernamePasswordAuthenticationToken`
+construction, same `SecurityContextRepository.saveContext` call. That logic already exists as a
+private method on `AccountController`. Widening it to package-private and calling it from
+`api.v1` was the obvious fix, except decision [7]'s resolved open question froze
+`AccountController` and `Registration.validate` for this milestone specifically, so the REST path
+and the JSP path could be reviewed as independent, smaller slices rather than one commit that
+changes both a public API and existing form behaviour.
+
+**Decision.** Copy the method rather than extract it, for this milestone only. Both copies are
+covered by tests that would catch either one drifting from the other.
+
+**Consequences.** Two copies of session-fixation-sensitive code, which is exactly the kind of thing
+that should not be allowed to sit unexamined. This entry is that examination.
+
+Revisit the moment `Registration` and `RegistrationRequest` unify (open question 3 in the M3
+blueprint already names this as the likely next step). Widening `signIn` to package-private and
+deleting the copy in `RegistrationController` is a one-word change once that happens.
+
+---
+
+## 27. CSRF for the API is a dual-mode request handler, not a mirrored cookie
+
+**Status:** accepted, and narrows entry 8
+
+**Context.** Entry 8 said the CSRF token would be "exposed through a cookie repository the
+page's JavaScript can read, with the Spring Security 6 request handler that keeps BREACH
+protection working" -- as if both halves were one setting. They are not compatible on their
+own: `CookieCsrfTokenRepository` always persists the raw token; `XorCsrfTokenRequestAttributeHandler`
+only ever accepts a freshly XOR-masked encoding of it back. A rendered page produces that
+encoding by evaluating `${_csrf.token}`. A client with nothing but `document.cookie` -- curl,
+Postman, a JS client with no page to scrape -- can only mirror the raw value, and the masked
+handler rejects it outright.
+
+**Decision.** `DualCsrfTokenRequestHandler` tries `XorCsrfTokenRequestAttributeHandler` first and
+falls back to a plain raw-value comparison only when the masked resolution fails to decode.
+Every rendered form still gets a masked value on every request, so BREACH protection on that path
+is unchanged; the fallback is the same double-submit-cookie comparison Spring shipped before the
+masked handler existed, and it only runs on a request the masked check has already given up on.
+`CsrfCookieFilter` runs immediately after `CsrfFilter` to force the deferred token to resolve on
+every request, not just ones a JSP renders, since nothing else would ever call `getToken()` on a
+plain API GET and the cookie would never get written. The cookie also carries an explicit
+`SameSite=Lax`, matching the session cookie's own posture [6] rather than the browser's default
+heuristic.
+
+**Consequences.** The double-submit fallback's safety rests on secrecy, not on cookie
+transmission: this app runs no CORS configuration anywhere, so a cross-origin page can neither
+read the cookie value nor set a matching header, and the cookie carries no `Domain`, so it is
+host-only. That is what makes the fallback sound here specifically -- it would not automatically
+be sound behind a CORS policy that allowed credentialed cross-origin requests to `/api/v1/**`.
+
+Revisit if a CORS policy is ever added for `/api/v1/**`: the no-CORS assumption this entry leans
+on would need re-proving, not assumed to still hold.

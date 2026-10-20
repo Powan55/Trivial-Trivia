@@ -6,7 +6,7 @@ in the Pages workflow instead of committing the JSON is what stops the two copie
 question to the CSV and the demo picks it up on the next deploy.
 
 The output is the same array-of-rows shape the app's own JSON export produces, so a file from
-/questions/export?format=json can be dropped straight in.
+/api/v1/questions/export?format=json can be dropped straight in.
 
     python scripts/questions-to-json.py <input.csv> <output.json>
 """

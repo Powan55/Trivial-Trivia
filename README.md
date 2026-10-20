@@ -54,13 +54,12 @@ Nothing is written inside the project or into the packaged artifact.
 mvn -B clean verify
 ```
 
-243 JUnit 5 tests: unit tests for the game, the format adapters and the validators, MockMvc tests
-for every route, and a smaller set that boots a real servlet container because MockMvc cannot see
-a JSP actually render. Coverage lands around 97% of lines; the build fails below 85%. The JaCoCo
-report is written to `target/site/jacoco/index.html`.
+JUnit 5 tests cover the game, format adapters, validators, persistence and HTTP routes. Some boot
+a real servlet container to check rendered JSPs. The build requires at least 85% line coverage
+and 80% branch coverage. The JaCoCo report is written to `target/site/jacoco/index.html`.
 
 Two of them are there specifically to stop old bugs coming back:
-`PlayControllerTest.twoSessionsKeepSeparateScores` (the game state used to be a singleton) and
+`PlayControllerTest.sessionsKeepQuestionsAndScoresSeparate` (the game state used to be a singleton) and
 `FormatAdapterTest.theXmlParserDoesNotResolveExternalEntities`.
 
 ## How it is put together
@@ -68,7 +67,7 @@ Two of them are there specifically to stop old bugs coming back:
 | Package | What is in it |
 | --- | --- |
 | `Controller` | The routes: home, sign in, accounts, the game loop, scores, question import and export |
-| `Service` | `GameService`: one round, the question order, the cursor into it, and the score |
+| `Service` | `RoundService`: persisted round progress, ownership checks and scoring |
 | `Game` | `Question` |
 | `Authentication` | Sign-in, registration, roles, the sign-in throttle, and who is playing right now. The filter chain itself is `SecurityConfig`, in the root package next to `Main` |
 | `Persistence` | The repositories, and the one-time read of a 1.0 data directory |
@@ -101,7 +100,7 @@ kept the format job.
 
 <https://powan55.github.io/Trivial-Trivia/> is a static page. GitHub Pages serves files and does
 not run a server-side process, so what is deployed there is the game loop rewritten in about a
-hundred lines of JavaScript, under [`site/`](site). It scores the same way `GameService` does: ten
+hundred lines of JavaScript, under [`site/`](site). It scores the same way `RoundService` does: ten
 points for a correct answer, nothing subtracted for a wrong one, answers compared ignoring case.
 
 Everything that needs a server is missing from it — registering, signing in, a saved score
