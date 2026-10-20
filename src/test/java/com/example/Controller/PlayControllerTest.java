@@ -22,7 +22,7 @@ class PlayControllerTest {
     void refreshKeepsQuestionAndEarlyEndRedirects() throws Exception {
         var session = new MockHttpSession();
         mvc.perform(get("/play").session(session)).andExpect(redirectedUrl("/play/question"));
-        int id = (Integer) session.getAttribute("activeRoundId");
+        int id = ((PlayController.ActiveRound) session.getAttribute("activeRound")).id();
         for (int i = 0; i < 2; i++) {
             mvc.perform(get("/play/question").session(session)).andExpect(status().isOk())
                     .andExpect(model().attribute("roundId", id)).andExpect(model().attribute("position", 1));
@@ -34,9 +34,9 @@ class PlayControllerTest {
     void missingForgedStaleAndUnservedIdentifiersCannotAnswer() throws Exception {
         var session = new MockHttpSession();
         mvc.perform(get("/play").session(session));
-        int stale = (Integer) session.getAttribute("activeRoundId");
+        int stale = ((PlayController.ActiveRound) session.getAttribute("activeRound")).id();
         mvc.perform(get("/play").session(session));
-        int active = (Integer) session.getAttribute("activeRoundId");
+        int active = ((PlayController.ActiveRound) session.getAttribute("activeRound")).id();
         for (int id : new int[]{stale, active, Integer.MAX_VALUE}) {
             mvc.perform(post("/play/answer").session(session).with(csrf()).param("roundId", "" + id)
                     .param("position", "1").param("answer", "Paris")).andExpect(status().isConflict());
@@ -71,8 +71,60 @@ class PlayControllerTest {
         mvc.perform(get("/play/question").session(bob)).andExpect(model().attribute("position", 1));
         org.assertj.core.api.Assertions.assertThat(a.get("roundId")).isNotEqualTo(b.get("roundId"));
         org.assertj.core.api.Assertions.assertThat(rounds.summary((Integer) a.get("roundId"),
-                (String) alice.getAttribute("roundOwner"), null).score()).isEqualTo(10);
+                ((PlayController.ActiveRound) alice.getAttribute("activeRound")).ownerToken(), null).score()).isEqualTo(10);
         org.assertj.core.api.Assertions.assertThat(rounds.summary((Integer) b.get("roundId"),
-                (String) bob.getAttribute("roundOwner"), null).score()).isZero();
+                ((PlayController.ActiveRound) bob.getAttribute("activeRound")).ownerToken(), null).score()).isZero();
+    }
+    @Test
+    void concurrentStartsPublishMatchingRoundAndOwner() throws Exception {
+        var firstPublished = new java.util.concurrent.CountDownLatch(1);
+        var secondFinished = new java.util.concurrent.CountDownLatch(1);
+        var firstThread = new java.util.concurrent.atomic.AtomicReference<Thread>();
+        var session = new MockHttpSession() {
+            @Override
+            public void setAttribute(String name, Object value) {
+                super.setAttribute(name, value);
+                if (Thread.currentThread() == firstThread.get()
+                        && (name.equals("activeRound") || name.equals("roundOwner"))) {
+                    firstPublished.countDown();
+                    try {
+                        if (!secondFinished.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                            throw new AssertionError("Second start did not finish");
+                        }
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError(interrupted);
+                    }
+                }
+            }
+        };
+        var executor = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            var first = executor.submit(() -> {
+                firstThread.set(Thread.currentThread());
+                return mvc.perform(get("/play").session(session)).andExpect(redirectedUrl("/play/question"));
+            });
+            var second = executor.submit(() -> {
+                if (!firstPublished.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                    throw new AssertionError("First start did not publish");
+                }
+                try {
+                    return mvc.perform(get("/play").session(session)).andExpect(redirectedUrl("/play/question"));
+                } finally {
+                    secondFinished.countDown();
+                }
+            });
+            first.get(15, java.util.concurrent.TimeUnit.SECONDS);
+            second.get(15, java.util.concurrent.TimeUnit.SECONDS);
+            var active = (PlayController.ActiveRound) session.getAttribute("activeRound");
+            mvc.perform(get("/play/question").session(session)).andExpect(status().isOk())
+                    .andExpect(model().attribute("roundId", active.id()))
+                    .andExpect(model().attribute("position", 1));
+            org.assertj.core.api.Assertions.assertThat(rounds.summary(active.id(), active.ownerToken(), null).total())
+                    .isPositive();
+        } finally {
+            secondFinished.countDown();
+            executor.shutdownNow();
+        }
     }
 }

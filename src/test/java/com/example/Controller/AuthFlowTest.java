@@ -147,7 +147,7 @@ class AuthFlowTest {
             String wrong = java.util.stream.IntStream.rangeClosed(1, 4).mapToObj(current::getOption)
                     .filter(option -> !option.equals(current.getAnswer())).findFirst().orElseThrow();
             mvc.perform(post("/play/answer").session(session).with(csrf())
-                    .param("roundId", session.getAttribute("activeRoundId").toString())
+                    .param("roundId", Integer.toString(((PlayController.ActiveRound) session.getAttribute("activeRound")).id()))
                     .param("position", Integer.toString(position))
                     .param("answer", firstCorrect && position == 1 ? asked.getAnswer() : wrong))
                     .andExpect(redirectedUrl("/play/question"));
@@ -174,7 +174,7 @@ class AuthFlowTest {
         var session = new MockHttpSession();
         mvc.perform(get("/play").session(session));
         Question asked = question(session);
-        String id = session.getAttribute("activeRoundId").toString();
+        String id = Integer.toString(((PlayController.ActiveRound) session.getAttribute("activeRound")).id());
         mvc.perform(post("/loginServlet").session(session).with(csrf())
                 .param("username", "flow_transition").param("password", "correct horse"))
                 .andExpect(redirectedUrl("/menu"));

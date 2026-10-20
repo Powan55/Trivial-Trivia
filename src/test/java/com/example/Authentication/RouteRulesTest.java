@@ -68,7 +68,7 @@ class RouteRulesTest {
             var page = mvc.perform(get("/play/question").session(session)).andExpect(status().isOk()).andReturn();
             var question = (com.example.Game.Question) page.getModelAndView().getModel().get("question");
             mvc.perform(post("/play/answer").session(session).with(csrf())
-                    .param("roundId", session.getAttribute("activeRoundId").toString())
+                    .param("roundId", Integer.toString(((com.example.Controller.PlayController.ActiveRound) session.getAttribute("activeRound")).id()))
                     .param("position", Integer.toString(position)).param("answer", question.getAnswer()))
                     .andExpect(redirectedUrl("/play/question"));
         }

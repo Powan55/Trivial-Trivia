@@ -1,7 +1,6 @@
 package com.example.Controller;
 
 import java.util.Map;
-import java.util.Objects;
 
 import com.example.Authentication.CurrentPlayer;
 import com.example.Service.RoundService;
@@ -20,8 +19,7 @@ import org.springframework.web.servlet.support.RequestContextUtils;
 @Controller
 @RequestMapping("/play")
 public class PlayController {
-    private static final String ACTIVE_ROUND = "activeRoundId";
-    private static final String ROUND_OWNER = "roundOwner";
+    private static final String ACTIVE_ROUND = "activeRound";
     private final RoundService rounds;
     private final CurrentPlayer user;
 
@@ -35,18 +33,17 @@ public class PlayController {
         var session = request.getSession();
         String owner = java.util.UUID.randomUUID().toString();
         int id = rounds.start(owner, user.getUsername());
-        session.setAttribute(ROUND_OWNER, owner);
-        session.setAttribute(ACTIVE_ROUND, id);
+        session.setAttribute(ACTIVE_ROUND, new ActiveRound(id, owner));
         return "redirect:/play/question";
     }
 
     @GetMapping("/question")
     public String getQuestion(Model model, HttpServletRequest request, RedirectAttributes feedback) {
-        Integer id = active(request);
-        if (id == null) {
+        ActiveRound active = active(request);
+        if (active == null) {
             return "redirect:/play";
         }
-        RoundService.Page page = rounds.serve(id, (String) request.getSession().getAttribute(ROUND_OWNER), user.getUsername());
+        RoundService.Page page = rounds.serve(active.id(), active.ownerToken(), user.getUsername());
         if (page == null) {
             Map<String, ?> carried = RequestContextUtils.getInputFlashMap(request);
             if (carried != null) {
@@ -65,10 +62,11 @@ public class PlayController {
     @PostMapping("/answer")
     public String submitAnswer(@RequestParam int roundId, @RequestParam int position,
             @RequestParam String answer, HttpServletRequest request, RedirectAttributes feedback) {
-        if (!Objects.equals(active(request), roundId)) {
+        ActiveRound active = active(request);
+        if (active == null || active.id() != roundId) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Round is no longer active");
         }
-        var verdict = rounds.answer(roundId, position, answer, (String) request.getSession().getAttribute(ROUND_OWNER), user.getUsername());
+        var verdict = rounds.answer(roundId, position, answer, active.ownerToken(), user.getUsername());
         feedback.addFlashAttribute("answerCorrect", verdict.correct());
         if (!verdict.correct()) {
             feedback.addFlashAttribute("correctAnswer", verdict.correctAnswer());
@@ -78,11 +76,11 @@ public class PlayController {
 
     @GetMapping("/end")
     public String endGame(Model model, HttpServletRequest request) {
-        Integer id = active(request);
-        if (id == null) {
+        ActiveRound active = active(request);
+        if (active == null) {
             return "redirect:/play";
         }
-        var summary = rounds.summary(id, (String) request.getSession().getAttribute(ROUND_OWNER), user.getUsername());
+        var summary = rounds.summary(active.id(), active.ownerToken(), user.getUsername());
         if (!summary.finished()) {
             return "redirect:/play/question";
         }
@@ -93,8 +91,10 @@ public class PlayController {
         return "endGamePage";
     }
 
-    private Integer active(HttpServletRequest request) {
+    private ActiveRound active(HttpServletRequest request) {
         var session = request.getSession(false);
-        return session == null ? null : (Integer) session.getAttribute(ACTIVE_ROUND);
+        return session == null ? null : (ActiveRound) session.getAttribute(ACTIVE_ROUND);
     }
+
+    public record ActiveRound(int id, String ownerToken) { }
 }
