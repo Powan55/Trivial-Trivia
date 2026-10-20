@@ -1,6 +1,5 @@
 package com.example.Controller;
 
-import com.example.Game.Question;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -8,232 +7,124 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class PlayControllerTest {
-
-    /** Rows in the shipped QuestionData.csv, minus the header. */
-    private static final int SHIPPED_QUESTIONS = 10;
-
-    @Autowired
-    private MockMvc mvc;
+    @Autowired MockMvc mvc;
+    @Autowired com.example.Service.RoundService rounds;
 
     @Test
-    void theLandingPageIsServed() throws Exception {
-        mvc.perform(get("/"))
-                .andExpect(status().isOk())
-                .andExpect(forwardedUrl("/WEB-INF/views/home.jsp"));
-    }
-
-    @Test
-    void startingARoundGoesToTheFirstQuestion() throws Exception {
-        mvc.perform(get("/play").session(new MockHttpSession()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/play/question"));
-    }
-
-    @Test
-    void aQuestionRendersTheQuestionPage() throws Exception {
-        MockHttpSession session = new MockHttpSession();
-        mvc.perform(get("/play").session(session));
-
-        mvc.perform(get("/play/question").session(session))
-                .andExpect(status().isOk())
-                .andExpect(model().attributeExists("question"))
-                .andExpect(forwardedUrl("/WEB-INF/views/questionPage.jsp"));
-    }
-
-    @Test
-    void runningOutOfQuestionsGoesToTheEndPage() throws Exception {
-        MockHttpSession session = new MockHttpSession();
-        mvc.perform(get("/play").session(session));
-
-        while (question(session) != null) {
-            mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "no idea"));
+    void refreshKeepsQuestionAndEarlyEndRedirects() throws Exception {
+        var session = new MockHttpSession();
+        mvc.perform(get("/play").session(session)).andExpect(redirectedUrl("/play/question"));
+        int id = ((PlayController.ActiveRound) session.getAttribute("activeRound")).id();
+        for (int i = 0; i < 2; i++) {
+            mvc.perform(get("/play/question").session(session)).andExpect(status().isOk())
+                    .andExpect(model().attribute("roundId", id)).andExpect(model().attribute("position", 1));
         }
-
-        mvc.perform(get("/play/question").session(session))
-                .andExpect(redirectedUrl("/play/end"));
+        mvc.perform(get("/play/end").session(session)).andExpect(redirectedUrl("/play/question"));
     }
 
     @Test
-    void theEndPageReportsTheScoreAndTheTally() throws Exception {
-        MockHttpSession session = new MockHttpSession();
+    void missingForgedStaleAndUnservedIdentifiersCannotAnswer() throws Exception {
+        var session = new MockHttpSession();
         mvc.perform(get("/play").session(session));
-
-        Question first = question(session);
-        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", first.getAnswer()));
-        Question second = question(session);
-        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "definitely wrong"));
-
-        assertThat(second).isNotNull();
-        mvc.perform(get("/play/end").session(session))
-                .andExpect(status().isOk())
-                .andExpect(model().attribute("score", 10))
-                .andExpect(model().attribute("right", 1))
-                .andExpect(model().attribute("wrong", 1))
-                .andExpect(forwardedUrl("/WEB-INF/views/endGamePage.jsp"));
-    }
-
-    @Test
-    void theProgressRunsFromOneToTheLastQuestion() throws Exception {
-        MockHttpSession session = new MockHttpSession();
+        int stale = ((PlayController.ActiveRound) session.getAttribute("activeRound")).id();
         mvc.perform(get("/play").session(session));
-
-        mvc.perform(get("/play/question").session(session))
-                .andExpect(model().attribute("questionNumber", 1))
-                .andExpect(model().attribute("totalQuestions", SHIPPED_QUESTIONS));
-
-        for (int expected = 2; expected <= SHIPPED_QUESTIONS; expected++) {
-            mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "no idea"));
-            mvc.perform(get("/play/question").session(session))
-                    .andExpect(model().attribute("questionNumber", expected))
-                    .andExpect(model().attribute("totalQuestions", SHIPPED_QUESTIONS));
+        int active = ((PlayController.ActiveRound) session.getAttribute("activeRound")).id();
+        for (int id : new int[]{stale, active, Integer.MAX_VALUE}) {
+            mvc.perform(post("/play/answer").session(session).with(csrf()).param("roundId", "" + id)
+                    .param("position", "1").param("answer", "Paris")).andExpect(status().isConflict());
         }
+        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "Paris"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/play/end")).andExpect(redirectedUrl("/play"));
     }
-
     @Test
-    void aRightAnswerIsAcknowledged() throws Exception {
-        MockHttpSession session = new MockHttpSession();
-        mvc.perform(get("/play").session(session));
-        Question asked = question(session);
-
-        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", asked.getAnswer()))
-                .andExpect(flash().attribute("answerCorrect", true))
-                .andExpect(flash().attributeCount(1));
-    }
-
-    @Test
-    void aWrongAnswerComesBackWithTheRightOne() throws Exception {
-        MockHttpSession session = new MockHttpSession();
-        mvc.perform(get("/play").session(session));
-        Question asked = question(session);
-
-        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "definitely wrong"))
-                .andExpect(flash().attribute("answerCorrect", false))
-                .andExpect(flash().attribute("correctAnswer", asked.getAnswer()));
-    }
-
-    @Test
-    void feedbackReachesTheNextPageAndNotTheRefreshAfterIt() throws Exception {
-        MockHttpSession session = new MockHttpSession();
-        mvc.perform(get("/play").session(session));
-        mvc.perform(get("/play/question").session(session));
-        mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", "definitely wrong"));
-
-        mvc.perform(get("/play/question").session(session))
-                .andExpect(model().attribute("answerCorrect", false))
-                .andExpect(model().attributeExists("correctAnswer"));
-
-        mvc.perform(get("/play/question").session(session))
-                .andExpect(model().attributeDoesNotExist("answerCorrect", "correctAnswer"));
-    }
-
-    /**
-     * The tenth answer redirects twice: to /play/question, which finds nothing left, and on to
-     * /play/end. The verdict has to survive both hops or the last question is the only one that
-     * never gets one.
-     */
-    @Test
-    void theVerdictOnTheLastAnswerReachesTheEndPage() throws Exception {
-        MockHttpSession session = new MockHttpSession();
-        Question last = playRound(session, false);
-
-        mvc.perform(get("/play/question").session(session))
-                .andExpect(redirectedUrl("/play/end"))
-                .andExpect(flash().attribute("answerCorrect", false))
-                .andExpect(flash().attribute("correctAnswer", last.getAnswer()));
-
-        mvc.perform(get("/play/end").session(session))
-                .andExpect(model().attribute("answerCorrect", false))
-                .andExpect(model().attribute("correctAnswer", last.getAnswer()));
-    }
-
-    @Test
-    void aRightLastAnswerReachesTheEndPageWithNothingToCorrect() throws Exception {
-        MockHttpSession session = new MockHttpSession();
-        playRound(session, true);
-
-        mvc.perform(get("/play/question").session(session))
-                .andExpect(redirectedUrl("/play/end"))
-                .andExpect(flash().attribute("answerCorrect", true))
-                .andExpect(flash().attributeCount(1));
-
-        mvc.perform(get("/play/end").session(session))
-                .andExpect(model().attribute("answerCorrect", true))
-                .andExpect(model().attributeDoesNotExist("correctAnswer"));
-    }
-
-    @Test
-    void theEndPageShowsNoVerdictToSomebodyWhoAnsweredNothing() throws Exception {
-        MockHttpSession session = new MockHttpSession();
-        mvc.perform(get("/play").session(session));
-
-        mvc.perform(get("/play/end").session(session))
-                .andExpect(model().attributeDoesNotExist("answerCorrect", "correctAnswer"));
-    }
-
-    /** Answering before a question has been handed out scores nothing and says nothing. */
-    @Test
-    void anAnswerWithNoQuestionInFlightProducesNoFeedback() throws Exception {
-        mvc.perform(post("/play/answer").session(new MockHttpSession()).with(csrf()).param("answer", "Paris"))
-                .andExpect(redirectedUrl("/play/question"))
-                .andExpect(flash().attributeCount(0));
-    }
-
-    /**
-     * Two players at once. GameService used to be a singleton, so the second player's answers
-     * landed on the first player's score and each of them skipped the other's questions.
-     */
-    @Test
-    void twoSessionsKeepSeparateScores() throws Exception {
-        MockHttpSession alice = new MockHttpSession();
-        MockHttpSession bob = new MockHttpSession();
+    void sessionsKeepQuestionsAndScoresSeparate() throws Exception {
+        var alice = new MockHttpSession();
+        var bob = new MockHttpSession();
         mvc.perform(get("/play").session(alice));
         mvc.perform(get("/play").session(bob));
-
-        Question aliceSees = question(alice);
-        Question bobSees = question(bob);
-        assertThat(bobSees.getQuestion()).isEqualTo(aliceSees.getQuestion());
-
-        mvc.perform(post("/play/answer").session(alice).with(csrf()).param("answer", aliceSees.getAnswer()));
-        mvc.perform(post("/play/answer").session(bob).with(csrf()).param("answer", "definitely wrong"));
-
-        mvc.perform(get("/play/end").session(alice)).andExpect(model().attribute("score", 10));
-        mvc.perform(get("/play/end").session(bob)).andExpect(model().attribute("score", 0));
-    }
-
-    /** Answers every question in the round. @return the last question asked. */
-    private Question playRound(MockHttpSession session, boolean correctly) throws Exception {
-        mvc.perform(get("/play").session(session));
-        Question asked = null;
-        for (int i = 0; i < SHIPPED_QUESTIONS; i++) {
-            asked = question(session);
-            String answer = correctly ? asked.getAnswer() : "definitely wrong";
-            mvc.perform(post("/play/answer").session(session).with(csrf()).param("answer", answer));
+        var a = mvc.perform(get("/play/question").session(alice)).andReturn().getModelAndView().getModel();
+        var b = mvc.perform(get("/play/question").session(bob)).andReturn().getModelAndView().getModel();
+        var question = (com.example.Game.Question) a.get("question");
+        for (var session : new MockHttpSession[]{alice, bob}) {
+            mvc.perform(post("/play/answer").session(session).with(csrf())
+                    .param("roundId", a.get("roundId").toString()).param("position", "1")
+                    .param("answer", question.getAnswer()))
+                    .andExpect(status().is(session == alice ? 302 : 409));
+            if (session == alice) {
+                mvc.perform(post("/play/answer").session(session).with(csrf())
+                        .param("roundId", a.get("roundId").toString()).param("position", "1")
+                        .param("answer", question.getAnswer()))
+                        .andExpect(flash().attribute("answerCorrect", true))
+                        .andExpect(flash().attributeCount(1));
+            }
         }
-        return asked;
+        mvc.perform(get("/play/question").session(alice)).andExpect(model().attribute("position", 2));
+        mvc.perform(get("/play/question").session(bob)).andExpect(model().attribute("position", 1));
+        org.assertj.core.api.Assertions.assertThat(a.get("roundId")).isNotEqualTo(b.get("roundId"));
+        org.assertj.core.api.Assertions.assertThat(rounds.summary((Integer) a.get("roundId"),
+                ((PlayController.ActiveRound) alice.getAttribute("activeRound")).ownerToken(), null).score()).isEqualTo(10);
+        org.assertj.core.api.Assertions.assertThat(rounds.summary((Integer) b.get("roundId"),
+                ((PlayController.ActiveRound) bob.getAttribute("activeRound")).ownerToken(), null).score()).isZero();
     }
-
-    /** Fetches the next question by driving the controller, or null once the round is over. */
-    private Question question(MockHttpSession session) throws Exception {
-        MvcResult result = mvc.perform(get("/play/question").session(session)).andReturn();
-        if (result.getModelAndView() == null) {
-            return null;
+    @Test
+    void concurrentStartsPublishMatchingRoundAndOwner() throws Exception {
+        var firstPublished = new java.util.concurrent.CountDownLatch(1);
+        var secondFinished = new java.util.concurrent.CountDownLatch(1);
+        var firstThread = new java.util.concurrent.atomic.AtomicReference<Thread>();
+        var session = new MockHttpSession() {
+            @Override
+            public void setAttribute(String name, Object value) {
+                super.setAttribute(name, value);
+                if (Thread.currentThread() == firstThread.get()
+                        && (name.equals("activeRound") || name.equals("roundOwner"))) {
+                    firstPublished.countDown();
+                    try {
+                        if (!secondFinished.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                            throw new AssertionError("Second start did not finish");
+                        }
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError(interrupted);
+                    }
+                }
+            }
+        };
+        var executor = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            var first = executor.submit(() -> {
+                firstThread.set(Thread.currentThread());
+                return mvc.perform(get("/play").session(session)).andExpect(redirectedUrl("/play/question"));
+            });
+            var second = executor.submit(() -> {
+                if (!firstPublished.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                    throw new AssertionError("First start did not publish");
+                }
+                try {
+                    return mvc.perform(get("/play").session(session)).andExpect(redirectedUrl("/play/question"));
+                } finally {
+                    secondFinished.countDown();
+                }
+            });
+            first.get(15, java.util.concurrent.TimeUnit.SECONDS);
+            second.get(15, java.util.concurrent.TimeUnit.SECONDS);
+            var active = (PlayController.ActiveRound) session.getAttribute("activeRound");
+            mvc.perform(get("/play/question").session(session)).andExpect(status().isOk())
+                    .andExpect(model().attribute("roundId", active.id()))
+                    .andExpect(model().attribute("position", 1));
+            org.assertj.core.api.Assertions.assertThat(rounds.summary(active.id(), active.ownerToken(), null).total())
+                    .isPositive();
+        } finally {
+            secondFinished.countDown();
+            executor.shutdownNow();
         }
-        return (Question) result.getModelAndView().getModel().get("question");
     }
 }

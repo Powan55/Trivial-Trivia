@@ -107,13 +107,12 @@ a violation actually lands.
 | `Database/*Adapter` | `format/*Adapter` | Unchanged apart from the package and the stream signature |
 | `Database/DataDirectory` | `support/DataDirectory` | Survives: it holds the H2 file and the legacy CSVs |
 | `Game/Questions` | `persistence/QuestionRepository` | The "skip malformed rows" logic moves to the import path, which is where malformed rows actually come from |
-| `Service/GameService` | `game/RoundService` | Loses `@SessionScope`; the session keeps a round id and nothing else [9] |
+| `Service/RoundService` | `game/RoundService` | Stateless; the session keeps a round id and ownership nonce [9] |
 
 Two tests are named in the README as guards against bugs that already came back once. Both must
 survive, re-expressed rather than deleted:
 
-- `PlayControllerTest.twoSessionsKeepSeparateScores` becomes "two sessions hold two different
-  round ids".
+- `PlayControllerTest.sessionsKeepQuestionsAndScoresSeparate` checks separate rounds and ownership.
 - `FormatAdapterTest.theXmlParserDoesNotResolveExternalEntities` is unaffected by any of this and
   must stay exactly as it is.
 
@@ -271,9 +270,8 @@ signed-in player's score history, and who is currently signed in. Registration g
 next to the form post, because it is the one place this milestone has a request body worth
 validating -- without at least one, `spring-boot-starter-validation` would be a dependency with
 nothing to justify its boot cost against [12]. The round in progress does not get a REST face yet.
-`GameService` is still session-scoped [9] until M4 turns it into a stateless `RoundService` keyed
-by a round id, and a versioned API is the wrong place to commit to a shape that milestone is about
-to replace.
+`RoundService` now persists progress [9], but gameplay remains behind the JSP routes until its
+category and timing contracts settle.
 
 `GET /api/v1/**` joins the public routes, the same way `/api/v1/questions/export` already is [6], except
 where a route mirrors something the JSP side keeps behind a session: score history matches
@@ -322,11 +320,10 @@ compared by text. Display order does not affect correctness, so a refresh reshuf
 harmless. Changing that hash reshuffles a live round's options mid-round, which is the ceiling on
 the shortcut.
 
-This is the milestone where `GameService` stops being session-scoped [9], because a durable
-`served_at` and a service that a multiplayer room can also call are the same requirement.
+`RoundService` already persists progress and `served_at` [9]. The timer builds on that state.
 
 It also breaks something the docs promise: CONTRIBUTING says `site/demo.js` scores the same way
-`GameService` does. Streaks can follow into the demo cheaply; a server-authoritative timer cannot
+`RoundService` does. Streaks can follow into the demo cheaply; a server-authoritative timer cannot
 follow into a page with no server. Extend the demo for streaks and change CONTRIBUTING to say
 plainly which parts the demo does not implement, rather than letting the claim quietly go stale.
 
