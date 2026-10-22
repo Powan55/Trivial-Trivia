@@ -45,17 +45,25 @@ function updateSelection() {
     el('begin').disabled = count === 0;
 }
 
+function shuffle(items) {
+    for (let i = items.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [items[i], items[j]] = [items[j], items[i]];
+    }
+}
+
 function startGame() {
     questions = matchingQuestions();
     if (questions.length === 0) {
         updateSelection();
         return;
     }
-    for (let i = questions.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [questions[i], questions[j]] = [questions[j], questions[i]];
-    }
-    questions = questions.slice(0, ROUND_LIMIT);
+    shuffle(questions);
+    questions = questions.slice(0, ROUND_LIMIT).map((question) => {
+        const options = [...question.options];
+        shuffle(options);
+        return { ...question, options };
+    });
     index = 0;
     score = 0;
     right = 0;

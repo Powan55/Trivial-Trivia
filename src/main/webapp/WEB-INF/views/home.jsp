@@ -15,7 +15,7 @@
             <img class="hero-logo" src="${pageContext.request.contextPath}/images/Trivial-Trivia.jpg"
                  alt="" width="96" height="96">
             <h1>Trivial Trivia</h1>
-            <p class="lead">Ten multiple-choice questions. Ten points each. A wrong answer costs
+            <p class="lead">Up to five multiple-choice questions. Ten points each. A wrong answer costs
                 you nothing but the round.</p>
             <div class="btn-row">
                 <a class="btn btn-primary" href="${pageContext.request.contextPath}/play">Play now</a>
