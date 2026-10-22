@@ -74,11 +74,14 @@ public class RoundService {
         int id = key.getKey().intValue();
         for (int index = 0; index < chosen.size(); index++) {
             Question question = chosen.get(index);
+            List<String> options = new ArrayList<>(List.of(question.getOption1(), question.getOption2(),
+                    question.getOption3(), question.getOption4()));
+            Collections.shuffle(options);
             jdbc.sql("""
                     insert into round_questions (round_id, position, text, option_1, option_2, option_3, option_4, answer)
                     values (?, ?, ?, ?, ?, ?, ?, ?)
-                    """).params(id, index + 1, question.getQuestion(), question.getOption1(), question.getOption2(),
-                            question.getOption3(), question.getOption4(), question.getAnswer()).update();
+                    """).params(id, index + 1, question.getQuestion(), options.get(0), options.get(1),
+                            options.get(2), options.get(3), question.getAnswer()).update();
         }
         return id;
     }

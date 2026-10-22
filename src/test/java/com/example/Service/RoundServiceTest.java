@@ -6,6 +6,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import com.example.Persistence.QuestionRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -21,6 +23,62 @@ class RoundServiceTest {
     @Autowired QuestionRepository questions;
     @Autowired JdbcClient jdbc;
     @Autowired PlatformTransactionManager transactions;
+
+    @ParameterizedTest
+    @ValueSource(strings = {"A", "B", "C", "D"})
+    void choiceSnapshotsKeepTheirOrderAndScoreByText(String answer) {
+        var original = questions.export();
+        try {
+            questions.replaceAll(List.of(QuestionRepository.HEADER,
+                    new String[]{"Choice order", "A", "B", "C", "D", answer, "Science", "EASY"}));
+            var bank = questions.export();
+            int correct = rounds.start("choice-correct", null, null, null);
+            int wrong = rounds.start("choice-wrong", null, null, null);
+            var page = rounds.serve(correct, "choice-correct", null);
+            var wrongPage = rounds.serve(wrong, "choice-wrong", null);
+            var options = options(page.question());
+            assertThat(options).containsExactlyInAnyOrder("A", "B", "C", "D");
+            assertThat(options(wrongPage.question())).containsExactlyInAnyOrder("A", "B", "C", "D");
+            assertThat(page.question().getAnswer()).isEqualTo(answer);
+            assertThat(questions.export()).usingRecursiveComparison().isEqualTo(bank);
+            assertThat(options(rounds.serve(correct, "choice-correct", null).question()))
+                    .containsExactlyElementsOf(options);
+            questions.replaceAll(List.<String[]>of(QuestionRepository.HEADER));
+            var reloaded = new RoundService(jdbc, questions).serve(correct, "choice-correct", null);
+            assertThat(reloaded.question().getQuestion()).isEqualTo(page.question().getQuestion());
+            assertThat(options(reloaded.question())).containsExactlyElementsOf(options);
+            assertThat(rounds.answer(correct, 1, answer, "choice-correct", null).correct()).isTrue();
+            String incorrect = options(wrongPage.question()).stream()
+                    .filter(option -> !option.equals(answer)).findFirst().orElseThrow();
+            assertThat(rounds.answer(wrong, 1, incorrect, "choice-wrong", null).correct()).isFalse();
+            assertThat(rounds.summary(correct, "choice-correct", null).score()).isEqualTo(10);
+            assertThat(rounds.summary(wrong, "choice-wrong", null).score()).isZero();
+            assertThat(rounds.answer(correct, 1, incorrect, "choice-correct", null).correct()).isTrue();
+            assertThat(rounds.summary(correct, "choice-correct", null).score()).isEqualTo(10);
+        } finally {
+            questions.replaceAll(original);
+        }
+    }
+
+    @Test
+    void choiceShufflePreservesDuplicateOptionsAcceptedByImports() {
+        var original = questions.export();
+        try {
+            questions.replaceAll(List.of(QuestionRepository.HEADER,
+                    new String[]{"Repeated choices", "A", "A", "B", "C", "A", "Science", "EASY"}));
+            int id = rounds.start("duplicates", null, null, null);
+            var page = rounds.serve(id, "duplicates", null);
+            assertThat(options(page.question())).containsExactlyInAnyOrder("A", "A", "B", "C");
+            assertThat(page.question().getAnswer()).isEqualTo("A");
+            assertThat(rounds.answer(id, 1, "A", "duplicates", null).correct()).isTrue();
+        } finally {
+            questions.replaceAll(original);
+        }
+    }
+
+    private List<String> options(com.example.Game.Question question) {
+        return java.util.stream.IntStream.rangeClosed(1, 4).mapToObj(question::getOption).toList();
+    }
 
     @Test
     void refreshDuplicatesOwnershipAndReload() {
