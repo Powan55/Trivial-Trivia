@@ -36,13 +36,15 @@ class PlaySetupTest {
 
     @Test
     void previewDoesNotStartOrReplaceActiveRound() throws Exception {
+        questions.replaceAll(List.of(QuestionRepository.HEADER,
+                new String[]{"Capital?", "Paris", "Rome", "Berlin", "Madrid", "Paris", "Geography", "EASY"}));
         var session = new MockHttpSession();
         mvc.perform(post("/play").session(session).with(csrf())).andExpect(redirectedUrl("/play/question"));
         Object active = session.getAttribute("activeRound");
         int count = jdbc.sql("select count(*) from rounds").query(Integer.class).single();
         mvc.perform(get("/play").session(session)).andExpect(status().isOk()).andExpect(view().name("playSetup"))
-                .andExpect(model().attribute("matchingCount", original.size() - 1))
-                .andExpect(model().attribute("roundSize", Math.min(5, original.size() - 1)))
+                .andExpect(model().attribute("matchingCount", 1))
+                .andExpect(model().attribute("roundSize", 1))
                 .andExpect(model().attribute("selectedCategory", ""))
                 .andExpect(model().attribute("selectedDifficulty", ""));
         mvc.perform(get("/play").session(session).param("category", "Geography").param("difficulty", "EASY"))
@@ -53,6 +55,8 @@ class PlaySetupTest {
 
     @Test
     void invalidZeroAndStaleStartsKeepCurrentRoundAndBankUntouched() throws Exception {
+        questions.replaceAll(List.of(QuestionRepository.HEADER,
+                new String[]{"Capital?", "Paris", "Rome", "Berlin", "Madrid", "Paris", "Geography", "EASY"}));
         var session = new MockHttpSession();
         mvc.perform(post("/play").session(session).with(csrf())).andExpect(redirectedUrl("/play/question"));
         Object active = session.getAttribute("activeRound");
@@ -63,7 +67,7 @@ class PlaySetupTest {
                 .andExpect(model().attributeExists("error"))
                 .andExpect(model().attribute("selectedCategory", ""))
                 .andExpect(model().attribute("selectedDifficulty", ""))
-                .andExpect(model().attribute("matchingCount", original.size() - 1));
+                .andExpect(model().attribute("matchingCount", 1));
         mvc.perform(post("/play").session(session).with(csrf()).param("difficulty", "impossible"))
                 .andExpect(status().isBadRequest());
         mvc.perform(post("/play").session(session).with(csrf()).param("category", "Geography").param("difficulty", "HARD"))
