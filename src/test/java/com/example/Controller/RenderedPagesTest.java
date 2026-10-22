@@ -87,8 +87,9 @@ class RenderedPagesTest {
                 Arguments.of("/loginMenu", "Sign in - Trivial Trivia"),
                 Arguments.of("/createUser", "Create an account - Trivial Trivia"),
                 Arguments.of("/questions", "Questions - Trivial Trivia"),
-                Arguments.of("/play/question", "Question - Trivial Trivia"),
-                Arguments.of("/play/end", "Question - Trivial Trivia"));
+                Arguments.of("/play", "Choose a round - Trivial Trivia"),
+                Arguments.of("/play/question", "Choose a round - Trivial Trivia"),
+                Arguments.of("/play/end", "Choose a round - Trivial Trivia"));
     }
 
     /** The host's health check is a plain GET of "/". Anything but 2xx is a deploy that never goes live. */
@@ -111,7 +112,9 @@ class RenderedPagesTest {
 
     @Test
     void aGuestCanStartAndSeeAQuestion() {
-        ResponseEntity<String> question = rendered("/play/question");
+        Map<String, String> jar = new LinkedHashMap<>();
+        startGuestRound(jar);
+        ResponseEntity<String> question = get("/play/question", cookieHeader(jar));
 
         assertThat(question.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(question.getBody()).contains("Submit answer");
@@ -119,14 +122,13 @@ class RenderedPagesTest {
 
     @Test
     void aRenderedRoundKeepsItsPositionOnRefreshAndShowsResultsOnlyWhenFinished() {
-        int total = questions.count();
+        int total = Math.min(5, questions.count());
         Map<String, String> jar = new LinkedHashMap<>();
         ResponseEntity<String> missing = get("/play/end", null);
         assertThat(missing.getStatusCode()).isEqualTo(HttpStatus.FOUND);
         assertThat(missing.getHeaders().getFirst(HttpHeaders.LOCATION)).endsWith("/play");
 
-        ResponseEntity<String> started = get("/play", null);
-        collectCookies(jar, started);
+        startGuestRound(jar);
         ResponseEntity<String> page = get("/play/question", cookieHeader(jar));
         collectCookies(jar, page);
         String roundId = hiddenIn(page.getBody(), "roundId");
@@ -186,7 +188,7 @@ class RenderedPagesTest {
         return Stream.of(
                 Arguments.of("/loginMenu", "Sign in - Trivial Trivia"),
                 Arguments.of("/createUser", "Create an account - Trivial Trivia"),
-                Arguments.of("/play/question", "Question - Trivial Trivia"));
+                Arguments.of("/play", "Choose a round - Trivial Trivia"));
     }
 
     /** The token the forms need is read straight out of the request attribute, with no taglib. */
@@ -434,6 +436,20 @@ class RenderedPagesTest {
             headers.add(HttpHeaders.COOKIE, cookie);
         }
         return direct.exchange(url(path), HttpMethod.GET, new HttpEntity<>(headers), String.class);
+    }
+
+    private void startGuestRound(Map<String, String> jar) {
+        ResponseEntity<String> setup = get("/play", cookieHeader(jar));
+        collectCookies(jar, setup);
+        assertThat(setup.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(setup.getBody()).contains("<title>Choose a round - Trivial Trivia</title>");
+        ResponseEntity<String> started = post("/play", cookieHeader(jar),
+                field("category", hiddenIn(setup.getBody(), "category")),
+                field("difficulty", hiddenIn(setup.getBody(), "difficulty")),
+                field("_csrf", tokenIn(setup.getBody())));
+        assertThat(started.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        assertThat(started.getHeaders().getFirst(HttpHeaders.LOCATION)).endsWith("/play/question");
+        collectCookies(jar, started);
     }
 
     private ResponseEntity<String> rendered(String path) {

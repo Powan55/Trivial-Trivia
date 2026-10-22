@@ -112,24 +112,12 @@ public class LegacyDataMigrator implements ApplicationRunner {
         if (rows.size() < 2) {
             return;
         }
-        for (String[] row : rows.subList(1, rows.size())) {
-            if (row.length < QuestionRepository.COLUMNS || !isAnswerable(row)) {
-                logger.warning("Left the shipped questions alone: " + DataFiles.QUESTIONS
-                        + " has a row the database would refuse");
-                return;
-            }
+        try {
+            questions.replaceAll(rows);
+            logger.info("Imported " + (rows.size() - 1) + " question(s) from " + DataFiles.QUESTIONS);
+        } catch (IllegalArgumentException invalid) {
+            logger.warning("Left the shipped questions alone: " + invalid.getMessage());
         }
-        questions.replaceAll(rows);
-        logger.info("Imported " + (rows.size() - 1) + " question(s) from " + DataFiles.QUESTIONS);
-    }
-
-    private static boolean isAnswerable(String[] row) {
-        for (int option = 1; option <= 4; option++) {
-            if (row[option].equals(row[5])) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private List<String[]> read(String fileName) {

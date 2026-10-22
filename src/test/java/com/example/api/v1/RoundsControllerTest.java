@@ -70,7 +70,7 @@ class RoundsControllerTest {
                 .andExpect(status().is3xxRedirection());
 
         String ownerToken = "api_history_owner";
-        int roundId = roundService.start(ownerToken, username);
+        int roundId = roundService.start(ownerToken, username, null, null);
         mvc.perform(get("/api/v1/rounds").session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.scores").isEmpty())

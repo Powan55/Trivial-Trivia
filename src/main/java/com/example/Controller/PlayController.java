@@ -29,12 +29,53 @@ public class PlayController {
     }
 
     @GetMapping
-    public String startGame(HttpServletRequest request) {
-        var session = request.getSession();
+    public String setup(@RequestParam(required = false) String category,
+            @RequestParam(required = false) String difficulty, Model model, HttpServletRequest request,
+            jakarta.servlet.http.HttpServletResponse response) {
+        try {
+            return setupModel(rounds.setup(category, difficulty), model);
+        } catch (IllegalArgumentException invalid) {
+            response.setStatus(400);
+            model.addAttribute("error", invalid.getMessage());
+            return setupModel(rounds.setup(null, null), model);
+        }
+    }
+
+    @PostMapping
+    public String startGame(@RequestParam(required = false) String category,
+            @RequestParam(required = false) String difficulty, HttpServletRequest request,
+            jakarta.servlet.http.HttpServletResponse response, Model model) {
         String owner = java.util.UUID.randomUUID().toString();
-        int id = rounds.start(owner, user.getUsername());
-        session.setAttribute(ACTIVE_ROUND, new ActiveRound(id, owner));
-        return "redirect:/play/question";
+        try {
+            int id = rounds.start(owner, user.getUsername(), category, difficulty);
+            request.getSession().setAttribute(ACTIVE_ROUND, new ActiveRound(id, owner));
+            return "redirect:/play/question";
+        } catch (IllegalArgumentException invalid) {
+            return setupError(category, difficulty, invalid.getMessage(), 400, model, request, response);
+        } catch (ResponseStatusException empty) {
+            if (empty.getStatusCode().value() != 409) {
+                throw empty;
+            }
+            return setupError(category, difficulty, empty.getReason(), 409, model, request, response);
+        }
+    }
+
+    private String setupError(String category, String difficulty, String error, int status, Model model,
+            HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response) {
+        setup(category, difficulty, model, request, response);
+        response.setStatus(status);
+        model.addAttribute("error", error);
+        return "playSetup";
+    }
+
+    private String setupModel(RoundService.Setup setup, Model model) {
+        model.addAttribute("categories", setup.categories());
+        model.addAttribute("difficulties", com.example.Persistence.QuestionRepository.DIFFICULTIES);
+        model.addAttribute("selectedCategory", setup.category() == null ? "" : setup.category());
+        model.addAttribute("selectedDifficulty", setup.difficulty() == null ? "" : setup.difficulty());
+        model.addAttribute("matchingCount", setup.matchingCount());
+        model.addAttribute("roundSize", setup.roundSize());
+        return "playSetup";
     }
 
     @GetMapping("/question")

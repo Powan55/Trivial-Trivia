@@ -86,7 +86,7 @@ class AuthFlowTest {
     void aFinishedRoundShowsUpOnTheScoresPage() throws Exception {
         MockHttpSession session = register("flow_score", "Ada Lovelace");
 
-        mvc.perform(get("/play").session(session));
+        mvc.perform(post("/play").with(csrf()).session(session));
         finish(session, true);
         mvc.perform(get("/play/end").session(session)).andExpect(model().attribute("score", 10));
 
@@ -99,7 +99,7 @@ class AuthFlowTest {
     void refreshingTheEndPageDoesNotRecordTheRoundTwice() throws Exception {
         MockHttpSession session = register("flow_refresh", "Ada Lovelace");
 
-        mvc.perform(get("/play").session(session));
+        mvc.perform(post("/play").with(csrf()).session(session));
         finish(session, true);
         mvc.perform(get("/play/end").session(session));
         mvc.perform(get("/play/end").session(session));
@@ -113,7 +113,7 @@ class AuthFlowTest {
     void refreshingTheEndPageDropsTheVerdictAndStillRecordsOnce() throws Exception {
         MockHttpSession session = register("flow_verdict", "Ada Lovelace");
 
-        mvc.perform(get("/play").session(session));
+        mvc.perform(post("/play").with(csrf()).session(session));
         finish(session, false);
 
         mvc.perform(get("/play/end").session(session))
@@ -131,7 +131,7 @@ class AuthFlowTest {
         MockHttpSession session = new MockHttpSession();
         mvc.perform(get("/guest").session(session));
 
-        mvc.perform(get("/play").session(session));
+        mvc.perform(post("/play").with(csrf()).session(session));
         finish(session, true);
         mvc.perform(get("/play/end").session(session)).andExpect(model().attribute("authenticated", false));
 
@@ -172,7 +172,7 @@ class AuthFlowTest {
     void guestRoundCannotAttachToAccountAfterLoginInSameSession() throws Exception {
         register("flow_transition", "Player");
         var session = new MockHttpSession();
-        mvc.perform(get("/play").session(session));
+        mvc.perform(post("/play").with(csrf()).session(session));
         Question asked = question(session);
         String id = Integer.toString(((PlayController.ActiveRound) session.getAttribute("activeRound")).id());
         mvc.perform(post("/loginServlet").session(session).with(csrf())

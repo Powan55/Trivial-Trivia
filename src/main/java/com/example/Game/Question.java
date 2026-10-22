@@ -16,8 +16,18 @@ public class Question {
     private String answer;
     private String option1, option2, option3, option4;
 
+    private final String category;
+    private final String difficulty;
+
     // Constructor
     public Question(String question, String option1, String option2, String option3, String option4, String answer) {
+        this(question, option1, option2, option3, option4, answer, "Uncategorized", "MEDIUM");
+    }
+
+    public Question(String question, String option1, String option2, String option3,
+            String option4, String answer, String category, String difficulty) {
+        this.category = category;
+        this.difficulty = difficulty;
         this.question = question;
         this.option1 = option1;
         this.option2 = option2;
@@ -99,6 +109,14 @@ public class Question {
             default:
                 return "";
         }
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public String getDifficulty() {
+        return difficulty;
     }
 
     @Override

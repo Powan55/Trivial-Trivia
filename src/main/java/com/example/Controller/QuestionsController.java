@@ -25,8 +25,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Controller
 public class QuestionsController {
 
-    private static final int COLUMNS = QuestionRepository.COLUMNS;
-
     private final RowFormats formats;
     private final QuestionRepository questions;
     private final CurrentPlayer user;
@@ -70,25 +68,12 @@ public class QuestionsController {
         if (rows.size() < 2) {
             return Optional.of("That file has a header and no questions.");
         }
-        for (String[] row : rows.subList(1, rows.size())) {
-            if (row.length < COLUMNS) {
-                return Optional.of("Every row needs " + COLUMNS
-                        + " columns: the question, four options and the answer.");
-            }
-            if (!isAnswerable(row)) {
-                return Optional.of("Every answer has to be one of that question's four options.");
-            }
+        try {
+            questions.replaceAll(rows);
+        } catch (IllegalArgumentException invalid) {
+            return Optional.of(invalid.getMessage());
         }
-        questions.replaceAll(rows);
         return Optional.empty();
     }
 
-    private static boolean isAnswerable(String[] row) {
-        for (int option = 1; option <= 4; option++) {
-            if (row[option].equals(row[5])) {
-                return true;
-            }
-        }
-        return false;
-    }
 }

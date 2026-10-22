@@ -108,7 +108,7 @@ class LegacyDataMigratorTest {
     void aLocallyImportedQuestionSetComesAcrossToo() {
         given(DataFiles.USERS, new String[] {"Ada Lovelace", "ada", HASH});
         given(DataFiles.QUESTIONS,
-                QuestionRepository.HEADER,
+                QuestionRepository.LEGACY_HEADER,
                 new String[] {"Largest ocean?", "Atlantic", "Indian", "Pacific", "Arctic", "Pacific"});
 
         migrator.run(null);
@@ -119,7 +119,7 @@ class LegacyDataMigratorTest {
     @Test
     void aQuestionFileWithNothingBelowTheHeaderLeavesTheShippedSetAlone() {
         given(DataFiles.USERS, new String[] {"Ada Lovelace", "ada", HASH});
-        given(DataFiles.QUESTIONS, QuestionRepository.HEADER);
+        given(DataFiles.QUESTIONS, QuestionRepository.LEGACY_HEADER);
 
         migrator.run(null);
 
@@ -129,24 +129,26 @@ class LegacyDataMigratorTest {
     /** A row the schema would refuse is not worth losing the shipped set over. */
     @Test
     void anUnanswerableLegacyQuestionLeavesTheShippedSetAlone() {
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("Invalid answer")).when(questions).replaceAll(any());
         given(DataFiles.USERS, new String[] {"Ada Lovelace", "ada", HASH});
         given(DataFiles.QUESTIONS,
-                QuestionRepository.HEADER,
+                QuestionRepository.LEGACY_HEADER,
                 new String[] {"Largest ocean?", "Atlantic", "Indian", "Pacific", "Arctic", "Caspian"});
 
         migrator.run(null);
 
-        verifyNoInteractions(questions);
+        verify(questions).replaceAll(any());
     }
 
     @Test
     void aShortQuestionRowLeavesTheShippedSetAlone() {
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("Invalid row")).when(questions).replaceAll(any());
         given(DataFiles.USERS, new String[] {"Ada Lovelace", "ada", HASH});
-        given(DataFiles.QUESTIONS, QuestionRepository.HEADER, new String[] {"Largest ocean?", "Atlantic"});
+        given(DataFiles.QUESTIONS, QuestionRepository.LEGACY_HEADER, new String[] {"Largest ocean?", "Atlantic"});
 
         migrator.run(null);
 
-        verifyNoInteractions(questions);
+        verify(questions).replaceAll(any());
     }
 
     @Test

@@ -21,7 +21,7 @@
             <li>
                 <a class="menu-card" href="${pageContext.request.contextPath}/play">
                     <span class="menu-card-title">Play a round</span>
-                    <span class="menu-card-note">Ten questions, ten points each.</span>
+                    <span class="menu-card-note">Choose a category and difficulty. Up to five questions, ten points each.</span>
                 </a>
             </li>
             <li>

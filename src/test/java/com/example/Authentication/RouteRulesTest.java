@@ -44,13 +44,13 @@ class RouteRulesTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/", "/menu", "/loginMenu", "/createUser", "/questions",
-            "/api/v1/questions/export", "/css/base.css", "/js/theme.js"})
+            "/play", "/api/v1/questions/export", "/css/base.css", "/js/theme.js"})
     void everyPublicPageIsServedSignedOut(String path) throws Exception {
         mvc.perform(get(path)).andExpect(status().isOk());
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/guest", "/play"})
+    @ValueSource(strings = {"/guest"})
     void theGuestAndPlayEntryPointsRedirectRatherThanChallenge(String path) throws Exception {
         mvc.perform(get(path)).andExpect(status().is3xxRedirection());
     }
@@ -63,8 +63,10 @@ class RouteRulesTest {
                 .andExpect(model().attribute("player", "Guest"))
                 .andExpect(model().attribute("authenticated", false));
 
-        mvc.perform(get("/play").session(session)).andExpect(redirectedUrl("/play/question"));
-        for (int position = 1; position <= 10; position++) {
+        mvc.perform(post("/play").with(csrf()).session(session)).andExpect(redirectedUrl("/play/question"));
+        int total = (Integer) mvc.perform(get("/play/question").session(session)).andReturn()
+                .getModelAndView().getModel().get("totalQuestions");
+        for (int position = 1; position <= total; position++) {
             var page = mvc.perform(get("/play/question").session(session)).andExpect(status().isOk()).andReturn();
             var question = (com.example.Game.Question) page.getModelAndView().getModel().get("question");
             mvc.perform(post("/play/answer").session(session).with(csrf())
@@ -127,7 +129,7 @@ class RouteRulesTest {
     @Test
     void answeringWithNoTokenIsRefused() throws Exception {
         MockHttpSession session = new MockHttpSession();
-        mvc.perform(get("/play").session(session));
+        mvc.perform(post("/play").with(csrf()).session(session));
         mvc.perform(get("/play/question").session(session));
 
         mvc.perform(post("/play/answer").session(session).param("answer", "no idea"))
