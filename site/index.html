@@ -31,7 +31,7 @@
     <img src="Trivial-Trivia.jpg" alt="" class="logo" width="56" height="56">
     <div>
       <h1>Trivial Trivia</h1>
-      <p class="sub">Ten questions. Ten points each.</p>
+      <p class="sub">Up to five questions. Ten points each.</p>
     </div>
     <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false" hidden>
       <span class="theme-toggle-icon" aria-hidden="true"></span>
@@ -46,6 +46,20 @@
       <div class="choice">
         <h2>Play it now</h2>
         <p id="intro">Loading questions&hellip;</p>
+        <div class="filter-field">
+          <label for="category">Category</label>
+          <select id="category" disabled><option value="">All categories</option></select>
+        </div>
+        <div class="filter-field">
+          <label for="difficulty">Difficulty</label>
+          <select id="difficulty" disabled>
+            <option value="">All difficulties (mixed)</option>
+            <option value="EASY">Easy</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HARD">Hard</option>
+          </select>
+        </div>
+        <p id="selection-count" role="status" aria-live="polite"></p>
         <button id="begin" class="primary action" disabled>Start the demo</button>
       </div>
 
@@ -70,11 +84,11 @@
     <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
 
     <div class="meta">
-      <span id="progress">Question 1 of 10</span>
+      <span id="progress">Question 1 of 5</span>
       <span id="score" aria-live="polite">Score: 0</span>
     </div>
     <div class="progress-track" role="progressbar" aria-label="Round progress"
-         aria-valuemin="0" aria-valuemax="10" aria-valuenow="1" id="progress-track">
+         aria-valuemin="0" aria-valuemax="5" aria-valuenow="1" id="progress-track">
       <div class="progress-fill" id="progress-fill"></div>
     </div>
 

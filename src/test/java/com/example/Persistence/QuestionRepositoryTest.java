@@ -35,9 +35,16 @@ class QuestionRepositoryTest {
 
     private static List<String[]> withHeader(String[]... rows) {
         List<String[]> all = new ArrayList<>();
-        all.add(QuestionRepository.HEADER.clone());
+        all.add(QuestionRepository.LEGACY_HEADER.clone());
         all.addAll(List.of(rows));
         return all;
+    }
+
+    private static String[] extended(String[] row) {
+        String[] result = java.util.Arrays.copyOf(row, 8);
+        result[6] = "Uncategorized";
+        result[7] = "MEDIUM";
+        return result;
     }
 
     @Test
@@ -69,7 +76,7 @@ class QuestionRepositoryTest {
     void exportPutsTheHeaderBackAndKeepsTheOrder() {
         questions.replaceAll(withHeader(CAPITAL, PLANET));
 
-        assertThat(questions.export()).containsExactly(QuestionRepository.HEADER, CAPITAL, PLANET);
+        assertThat(questions.export()).containsExactly(QuestionRepository.HEADER, extended(CAPITAL), extended(PLANET));
     }
 
     /** An answer matching none of its options is an unanswerable question. The schema says no. */
@@ -77,7 +84,7 @@ class QuestionRepositoryTest {
     void theDatabaseRefusesAnAnswerThatIsNotOneOfTheOptions() {
         assertThatThrownBy(() -> questions.replaceAll(withHeader(
                 new String[] {"Capital of France?", "London", "Berlin", "Madrid", "Lyon", "Paris"})))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     /** A refused row leaves the set it was going to replace exactly as it was. */
@@ -85,7 +92,7 @@ class QuestionRepositoryTest {
     void aRefusedImportRollsBack() {
         assertThatThrownBy(() -> questions.replaceAll(withHeader(CAPITAL,
                 new String[] {"Red planet?", "Venus", "Jupiter", "Mars", "Saturn", "Pluto"})))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(IllegalArgumentException.class);
 
         assertThat(questions.count()).isEqualTo(10);
     }

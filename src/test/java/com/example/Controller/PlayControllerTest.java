@@ -21,7 +21,7 @@ class PlayControllerTest {
     @Test
     void refreshKeepsQuestionAndEarlyEndRedirects() throws Exception {
         var session = new MockHttpSession();
-        mvc.perform(get("/play").session(session)).andExpect(redirectedUrl("/play/question"));
+        mvc.perform(post("/play").with(csrf()).session(session)).andExpect(redirectedUrl("/play/question"));
         int id = ((PlayController.ActiveRound) session.getAttribute("activeRound")).id();
         for (int i = 0; i < 2; i++) {
             mvc.perform(get("/play/question").session(session)).andExpect(status().isOk())
@@ -33,9 +33,9 @@ class PlayControllerTest {
     @Test
     void missingForgedStaleAndUnservedIdentifiersCannotAnswer() throws Exception {
         var session = new MockHttpSession();
-        mvc.perform(get("/play").session(session));
+        mvc.perform(post("/play").with(csrf()).session(session));
         int stale = ((PlayController.ActiveRound) session.getAttribute("activeRound")).id();
-        mvc.perform(get("/play").session(session));
+        mvc.perform(post("/play").with(csrf()).session(session));
         int active = ((PlayController.ActiveRound) session.getAttribute("activeRound")).id();
         for (int id : new int[]{stale, active, Integer.MAX_VALUE}) {
             mvc.perform(post("/play/answer").session(session).with(csrf()).param("roundId", "" + id)
@@ -49,8 +49,8 @@ class PlayControllerTest {
     void sessionsKeepQuestionsAndScoresSeparate() throws Exception {
         var alice = new MockHttpSession();
         var bob = new MockHttpSession();
-        mvc.perform(get("/play").session(alice));
-        mvc.perform(get("/play").session(bob));
+        mvc.perform(post("/play").with(csrf()).session(alice));
+        mvc.perform(post("/play").with(csrf()).session(bob));
         var a = mvc.perform(get("/play/question").session(alice)).andReturn().getModelAndView().getModel();
         var b = mvc.perform(get("/play/question").session(bob)).andReturn().getModelAndView().getModel();
         var question = (com.example.Game.Question) a.get("question");
@@ -102,14 +102,14 @@ class PlayControllerTest {
         try {
             var first = executor.submit(() -> {
                 firstThread.set(Thread.currentThread());
-                return mvc.perform(get("/play").session(session)).andExpect(redirectedUrl("/play/question"));
+                return mvc.perform(post("/play").with(csrf()).session(session)).andExpect(redirectedUrl("/play/question"));
             });
             var second = executor.submit(() -> {
                 if (!firstPublished.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
                     throw new AssertionError("First start did not publish");
                 }
                 try {
-                    return mvc.perform(get("/play").session(session)).andExpect(redirectedUrl("/play/question"));
+                    return mvc.perform(post("/play").with(csrf()).session(session)).andExpect(redirectedUrl("/play/question"));
                 } finally {
                     secondFinished.countDown();
                 }

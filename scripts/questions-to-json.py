@@ -15,15 +15,30 @@ import csv
 import json
 import sys
 
-COLUMNS = 6  # question, four options, answer
+LEGACY_HEADER = ["Question", "Option1", "Option2", "Option3", "Option4", "Answer"]
+HEADER = LEGACY_HEADER + ["Category", "Difficulty"]
 
 
 def main(source, target):
     with open(source, newline="", encoding="utf-8") as handle:
-        rows = [row for row in csv.reader(handle) if len(row) >= COLUMNS]
-
-    if len(rows) < 2:
-        sys.exit(f"{source}: expected a header and at least one question, found {len(rows)} rows")
+        rows = list(csv.reader(handle))
+    if not rows or rows[0] not in (LEGACY_HEADER, HEADER):
+        sys.exit(f"{source}: expected a six-column or eight-column question header")
+    width = len(rows[0])
+    normalized = [HEADER]
+    for number, row in enumerate(rows[1:], 2):
+        if len(row) != width or any(not cell.strip() for cell in row[:6]):
+            sys.exit(f"{source}:{number}: invalid question row")
+        if row[5] not in row[1:5]:
+            sys.exit(f"{source}:{number}: answer must match an option")
+        category = (row[6].strip() if width == 8 else "") or "Uncategorized"
+        difficulty = ((row[7].strip() if width == 8 else "") or "MEDIUM").upper()
+        if len(category) > 60 or difficulty not in ("EASY", "MEDIUM", "HARD"):
+            sys.exit(f"{source}:{number}: invalid category or difficulty")
+        normalized.append(row[:6] + [category, difficulty])
+    if len(normalized) < 2:
+        sys.exit(f"{source}: expected at least one question")
+    rows = normalized
 
     with open(target, "w", encoding="utf-8") as handle:
         json.dump(rows, handle, ensure_ascii=False, indent=2)

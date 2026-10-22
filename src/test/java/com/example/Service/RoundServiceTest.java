@@ -24,7 +24,7 @@ class RoundServiceTest {
 
     @Test
     void refreshDuplicatesOwnershipAndReload() {
-        int id = rounds.start("owner", null);
+        int id = rounds.start("owner", null, null, null);
         var page = rounds.serve(id, "owner", null);
         var servedAt = jdbc.sql("select served_at from round_questions where round_id = ? and position = 1")
                 .param(id).query(java.sql.Timestamp.class).single();
@@ -37,13 +37,13 @@ class RoundServiceTest {
         assertThatThrownBy(() -> rounds.answer(id, 1, "forged", "owner", null)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
         var verdict = rounds.answer(id, 1, page.question().getAnswer(), "owner", null);
         assertThat(rounds.answer(id, 1, page.question().getOption1(), "owner", null)).isEqualTo(verdict);
-        assertThat(new RoundService(jdbc).summary(id, "owner", null).score()).isEqualTo(10);
+        assertThat(new RoundService(jdbc, questions).summary(id, "owner", null).score()).isEqualTo(10);
         assertThat(rounds.serve(id, "owner", null).position()).isEqualTo(2);
     }
 
     @Test
     void rollbackRestoresQuestionAndTotals() {
-        int id = rounds.start("rollback", null);
+        int id = rounds.start("rollback", null, null, null);
         var page = rounds.serve(id, "rollback", null);
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
             rounds.answer(id, 1, page.question().getAnswer(), "rollback", null);
@@ -56,7 +56,7 @@ class RoundServiceTest {
     @Test
     void importKeepsSnapshotsAndEmptyBankCannotFinishRound() {
         var original = questions.export();
-        int id = rounds.start("import", null);
+        int id = rounds.start("import", null, null, null);
         var snapshot = rounds.serve(id, "import", null);
         rounds.answer(id, 1, snapshot.question().getAnswer(), "import", null);
         try {
@@ -65,19 +65,19 @@ class RoundServiceTest {
                     .param(id).query(String.class).single()).isEqualTo(snapshot.question().getAnswer());
             assertThat(rounds.summary(id, "import", null).score()).isEqualTo(10);
             int before = jdbc.sql("select count(*) from rounds").query(Integer.class).single();
-            assertThatThrownBy(() -> rounds.start("empty", null)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+            assertThatThrownBy(() -> rounds.start("empty", null, null, null)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
             assertThat(jdbc.sql("select count(*) from rounds").query(Integer.class).single()).isEqualTo(before);
         } finally {
             questions.replaceAll(original);
         }
-        int next = rounds.start("new", null);
-        assertThat(rounds.summary(next, "new", null).total()).isEqualTo(original.size() - 1);
-        assertThat(rounds.serve(next, "new", null).question().getQuestion()).isEqualTo(original.get(1)[0]);
+        int next = rounds.start("new", null, null, null);
+        assertThat(rounds.summary(next, "new", null).total()).isEqualTo(Math.min(5, original.size() - 1));
+        assertThat(original.subList(1, original.size()).stream().map(row -> row[0])).contains(rounds.serve(next, "new", null).question().getQuestion());
     }
 
     @Test
     void concurrentFinalSubmissionsFinishExactlyOnce() throws Exception {
-        int id = rounds.start("race", null);
+        int id = rounds.start("race", null, null, null);
         var page = rounds.serve(id, "race", null);
         while (page.position() < page.total()) {
             rounds.answer(id, page.position(), page.question().getAnswer(), "race", null);
@@ -106,8 +106,8 @@ class RoundServiceTest {
     void completionStoresSignedInScoreWithoutEndVisitAndKeepsSessionsSeparate() {
         String username = "durable_" + java.util.UUID.randomUUID().toString().substring(0, 8);
         new com.example.Persistence.UserRepository(jdbc).insert("Player", username, "unused_hash");
-        int id = rounds.start("signed", username);
-        int other = rounds.start("separate", null);
+        int id = rounds.start("signed", username, null, null);
+        int other = rounds.start("separate", null, null, null);
         var history = new com.example.Persistence.RoundRepository(jdbc);
         assertThat(history.scoresFor(username)).isEmpty();
         while (!rounds.summary(id, "signed", username).finished()) {
@@ -125,7 +125,7 @@ class RoundServiceTest {
 
     @Test
     void databaseFailureRollsBackAnswerAlongWithAggregate() {
-        int id = rounds.start("failure", null);
+        int id = rounds.start("failure", null, null, null);
         var page = rounds.serve(id, "failure", null);
         while (page.position() < page.total()) {
             rounds.answer(id, page.position(), page.question().getAnswer(), "failure", null);

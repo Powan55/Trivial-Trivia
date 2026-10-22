@@ -170,7 +170,7 @@ class QuestionsControllerTest {
         mvc.perform(multipart("/questions/import").file(upload("q.csv", HEADER + "Largest ocean?,Atlantic\n"))
                         .session(admin("import_short")).with(csrf()))
                 .andExpect(model().attribute("error",
-                        "Every row needs 6 columns: the question, four options and the answer."));
+                        "Every row must match the header's column count."));
 
         assertTheQuestionSetIsUntouched();
     }
@@ -188,7 +188,7 @@ class QuestionsControllerTest {
         mvc.perform(multipart("/questions/import").file(upload("q.csv", HEADER + ONE_ROW)).session(session).with(csrf()));
 
         MockHttpSession player = new MockHttpSession();
-        mvc.perform(get("/play").session(player));
+        mvc.perform(post("/play").with(csrf()).session(player));
         mvc.perform(get("/play/question").session(player))
                 .andExpect(model().attribute("question",
                         org.hamcrest.Matchers.hasToString(

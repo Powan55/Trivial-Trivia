@@ -20,8 +20,8 @@ Version 1.0.0 is the point where all of it actually works.
 
 ## What it does
 
-- Ten questions a round, ten points for each correct answer. A wrong answer costs nothing but is
-  counted.
+- Choose a category and difficulty, or play a mixed round. Up to five questions, ten points for
+  each correct answer. A wrong answer costs nothing but is counted.
 - Accounts, with BCrypt-hashed passwords. You can also play as a guest.
 - A score history per player. Guests do not get one, because there is nothing to key it to.
 - Import and export the question set as CSV, JSON or XML. Anyone can export; importing replaces

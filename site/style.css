@@ -264,6 +264,29 @@ a {
     font-size: 0.8rem;
 }
 
+.filter-field {
+    display: grid;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.filter-field label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.filter-field select {
+    width: 100%;
+    min-width: 0;
+    min-height: var(--tap-target);
+    padding: var(--space-2);
+    font: inherit;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+}
+
 .meta {
     display: flex;
     justify-content: space-between;

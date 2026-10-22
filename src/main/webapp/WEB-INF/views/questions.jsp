@@ -56,7 +56,8 @@
                                 <input type="file" id="file" name="file" accept=".csv,.json,.xml"
                                        aria-describedby="file-hint" required>
                                 <span class="hint" id="file-hint">A .csv, .json or .xml file, up to 256 KB.
-                                    Six columns: the question, four options and the answer.</span>
+                                    Six columns: the question, four options and the answer.
+                                    Optionally append Category and Difficulty as two more columns.</span>
                             </div>
                             <button type="submit" class="btn btn-primary">Import</button>
                         </form>

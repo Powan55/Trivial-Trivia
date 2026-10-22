@@ -1,16 +1,12 @@
-/*
- * The game loop from GameService, in the browser.
- *
- * Keep the two in step: ten points for a correct answer, nothing subtracted for a wrong one,
- * answers compared ignoring case. If GameService changes, change this.
- */
 const POINTS_PER_CORRECT_ANSWER = 10;
+const ROUND_LIMIT = 5;
 
 const el = (id) => document.getElementById(id);
 const startView = el('start');
 const roundView = el('round');
 const resultView = el('result');
 
+let bank = [];
 let questions = [];
 let index = 0;
 let score = 0;
@@ -23,6 +19,8 @@ function parse(rows) {
         text: row[0],
         options: row.slice(1, 5),
         answer: row[5],
+        category: row[6]?.trim() || 'Uncategorized',
+        difficulty: row[7]?.trim().toUpperCase() || 'MEDIUM',
     }));
 }
 
@@ -32,7 +30,32 @@ function show(view) {
     }
 }
 
+function matchingQuestions() {
+    return bank.filter((question) =>
+        (!el('category').value || question.category === el('category').value)
+        && (!el('difficulty').value || question.difficulty === el('difficulty').value));
+}
+
+function updateSelection() {
+    const count = matchingQuestions().length;
+    const size = Math.min(ROUND_LIMIT, count);
+    el('selection-count').textContent = count === 0
+        ? 'No questions match. Change your selection to start.'
+        : `${count} matching ${count === 1 ? 'question' : 'questions'}. This round: ${size} ${size === 1 ? 'question' : 'questions'}.${size < ROUND_LIMIT ? ' Fewer than five match, so this will be a shorter round.' : ''}`;
+    el('begin').disabled = count === 0;
+}
+
 function startGame() {
+    questions = matchingQuestions();
+    if (questions.length === 0) {
+        updateSelection();
+        return;
+    }
+    for (let i = questions.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [questions[i], questions[j]] = [questions[j], questions[i]];
+    }
+    questions = questions.slice(0, ROUND_LIMIT);
     index = 0;
     score = 0;
     right = 0;
@@ -56,22 +79,20 @@ function render() {
 
     const options = el('options');
     options.replaceChildren();
-    question.options.forEach((option, i) => {
+    question.options.forEach((option) => {
         const label = document.createElement('label');
         const input = document.createElement('input');
         input.type = 'radio';
         input.name = 'answer';
         input.value = option;
         input.required = true;
-        if (i === 0) {
-            input.autofocus = true;
-        }
         const text = document.createElement('span');
         // textContent, not innerHTML: the questions come from a file anyone can edit.
         text.textContent = option;
         label.append(input, text);
         options.append(label);
     });
+    options.querySelector('input').focus();
 }
 
 function submit(event) {
@@ -121,13 +142,21 @@ async function load() {
         if (!response.ok) {
             throw new Error(`questions.json responded ${response.status}`);
         }
-        questions = parse(await response.json());
-        if (questions.length === 0) {
+        bank = parse(await response.json());
+        if (bank.length === 0) {
             throw new Error('questions.json has no questions in it');
         }
         el('intro').textContent =
-            `${questions.length} questions, ${POINTS_PER_CORRECT_ANSWER} points each. A wrong answer costs nothing.`;
-        el('begin').disabled = false;
+            `Choose a category and difficulty from ${bank.length} questions. Play up to five, ${POINTS_PER_CORRECT_ANSWER} points each. A wrong answer costs nothing. Questions never repeat within a round.`;
+        for (const category of [...new Set(bank.map((question) => question.category))].sort()) {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            el('category').append(option);
+        }
+        el('category').disabled = false;
+        el('difficulty').disabled = false;
+        updateSelection();
         el('begin').focus();
     } catch (error) {
         el('intro').textContent = `Could not load the questions: ${error.message}`;
@@ -135,6 +164,12 @@ async function load() {
 }
 
 el('begin').addEventListener('click', startGame);
-el('again').addEventListener('click', startGame);
+el('again').addEventListener('click', () => {
+    show(startView);
+    updateSelection();
+    el('category').focus();
+});
+el('category').addEventListener('change', updateSelection);
+el('difficulty').addEventListener('change', updateSelection);
 el('answer-form').addEventListener('submit', submit);
 load();
