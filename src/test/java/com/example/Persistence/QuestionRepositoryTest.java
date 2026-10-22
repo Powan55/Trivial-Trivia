@@ -49,8 +49,8 @@ class QuestionRepositoryTest {
 
     @Test
     void readsWhatIsStored() {
-        assertThat(questions.count()).isEqualTo(10);
-        assertThat(questions.findAll().get(0).getQuestion()).isEqualTo("What is the capital of France?");
+        assertThat(questions.count()).isEqualTo(ShippedQuestions.rows().size() - 1);
+        assertThat(questions.findAll().get(0).getQuestion()).isEqualTo(ShippedQuestions.rows().get(1)[0]);
     }
 
     @Test
@@ -94,6 +94,6 @@ class QuestionRepositoryTest {
                 new String[] {"Red planet?", "Venus", "Jupiter", "Mars", "Saturn", "Pluto"})))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        assertThat(questions.count()).isEqualTo(10);
+        assertThat(questions.count()).isEqualTo(ShippedQuestions.rows().size() - 1);
     }
 }

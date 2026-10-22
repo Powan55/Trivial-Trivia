@@ -21,7 +21,7 @@ class CategoryMigrationTest {
         jdbc.sql("update questions set category_id = (select id from categories where name = 'Custom category') where id = 3").update();
         jdbc.sql("update questions set difficulty = 'HARD' where id = 4").update();
         jdbc.sql("insert into rounds (score, correct_count, finished_at) values (100, 10, current_timestamp)").update();
-        Flyway.configure().dataSource(source).load().migrate();
+        Flyway.configure().dataSource(source).target("4").load().migrate();
         var questions = new QuestionRepository(jdbc).findAll();
         assertThat(questions).hasSize(10);
         assertThat(questions.get(0).getCategory()).isEqualTo("Geography");

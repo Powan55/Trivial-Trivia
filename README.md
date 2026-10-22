@@ -22,6 +22,7 @@ Version 1.0.0 is the point where all of it actually works.
 
 - Choose a category and difficulty, or play a mixed round. Up to five questions, ten points for
   each correct answer. A wrong answer costs nothing but is counted.
+- 105 questions across five categories and three difficulties, with [source references](docs/question-sources.csv).
 - Accounts, with BCrypt-hashed passwords. You can also play as a guest.
 - A score history per player. Guests do not get one, because there is nothing to key it to.
 - Import and export the question set as CSV, JSON or XML. Anyone can export; importing replaces
@@ -115,6 +116,11 @@ python scripts/questions-to-json.py src/main/resources/Data/QuestionData.csv sit
 cp src/main/resources/static/images/Trivial-Trivia.jpg site/
 python -m http.server 8081 --directory site
 ```
+
+The bank upgrade expands installations that still have all ten original questions unchanged.
+Custom-only, empty or partly edited banks stay as they are; the full CSV remains available through
+the import screen. Existing rounds keep their saved questions. Builds predating category and
+difficulty selection play the entire bank, so do not use them with this expanded set.
 
 ## Deploying the real thing
 
