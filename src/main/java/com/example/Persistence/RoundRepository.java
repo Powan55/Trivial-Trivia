@@ -1,6 +1,8 @@
 package com.example.Persistence;
 
 import java.util.List;
+import java.time.LocalDateTime;
+import java.util.Comparator;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -56,4 +58,36 @@ public class RoundRepository {
                 .query(Integer.class)
                 .list();
     }
+
+    public List<HistoryEntry> historyFor(String username) {
+        if (username == null) {
+            return List.of();
+        }
+        return jdbc.sql("""
+                select r.id, r.score, r.finished_at, r.correct_count, r.wrong_count, r.total_questions
+                from rounds r
+                join users u on u.id = r.user_id
+                where u.username = ? and r.finished_at is not null
+                """)
+                .param(username)
+                .query((rs, row) -> {
+                    int correct = rs.getInt("correct_count");
+                    int wrong = rs.getInt("wrong_count");
+                    int total = rs.getInt("total_questions");
+                    long answered = (long) correct + wrong;
+                    boolean scoreOnly = total == 0 && correct == 0 && wrong == 0;
+                    boolean valid = correct >= 0 && wrong >= 0 && answered > 0
+                            && answered <= Integer.MAX_VALUE && (total == 0 || total == answered);
+                    return new HistoryEntry(rs.getInt("id"), rs.getInt("score"),
+                            scoreOnly ? null : rs.getObject("finished_at", LocalDateTime.class),
+                            valid ? correct : null, valid ? (int) answered : null);
+                })
+                .list().stream()
+                .sorted(Comparator.comparing(HistoryEntry::finishedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(HistoryEntry::id, Comparator.reverseOrder()))
+                .toList();
+    }
+
+    public record HistoryEntry(int id, int score, LocalDateTime finishedAt, Integer correctCount,
+                               Integer totalQuestions) { }
 }
