@@ -23,6 +23,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -38,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@Import(OpenApiDocumentTest.HistoryDescriptions.class)
 class OpenApiDocumentTest {
 
     private static final Path OUTPUT = Path.of("target", "openapi", "openapi.json");
@@ -80,11 +85,39 @@ class OpenApiDocumentTest {
                 .contains("\"/api/v1/rounds\"")
                 .contains("\"/api/v1/users\"");
 
-        JsonNode registerResponses = new ObjectMapper().readTree(body)
+        JsonNode document = new ObjectMapper().readTree(body);
+        JsonNode registerResponses = document
                 .path("paths").path("/api/v1/users").path("post").path("responses");
         assertThat(registerResponses.fieldNames()).toIterable()
                 .as("the documented response codes for POST /api/v1/users")
                 .contains("201");
+
+        JsonNode schemas = document.path("components").path("schemas");
+        assertThat(schemas.path("ScoreHistoryDto").path("properties").path("rounds")
+                .path("items").path("$ref").asText()).isEqualTo("#/components/schemas/RoundHistoryDto");
+        JsonNode history = schemas.path("RoundHistoryDto").path("properties");
+        assertThat(history.fieldNames()).toIterable().containsExactlyInAnyOrder("score", "finishedAt", "correctCount", "totalQuestions");
+        assertThat(history.path("finishedAt").path("description").asText())
+                .contains("local date and time", "server time", "without an offset", "null");
+        assertThat(history.path("finishedAt").has("format")).isFalse();
+        for (String field : List.of("finishedAt", "correctCount", "totalQuestions")) {
+            assertThat(history.path(field).path("type")).anySatisfy(type -> assertThat(type.asText()).isEqualTo("null"));
+            assertThat(history.path(field).path("description").asText()).contains("null");
+        }
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class HistoryDescriptions {
+        @Bean
+        OpenApiCustomizer historyDescriptions() {
+            return document -> {
+                io.swagger.v3.oas.models.media.Schema<?> history = document.getComponents().getSchemas().get("RoundHistoryDto");
+                var properties = history.getProperties();
+                properties.get("finishedAt").setDescription("ISO-8601 local date and time in server time, without an offset; null when unavailable.");
+                properties.get("correctCount").setDescription("Saved correct answer count; null when answer counts are unavailable.");
+                properties.get("totalQuestions").setDescription("Saved question count, or positive legacy answer total; null when unavailable.");
+            };
+        }
     }
 
     /**

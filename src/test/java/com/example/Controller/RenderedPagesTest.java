@@ -30,6 +30,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
@@ -61,6 +62,9 @@ class RenderedPagesTest {
 
     @Autowired
     private QuestionRepository questions;
+
+    @Autowired
+    private JdbcClient jdbc;
 
     @LocalServerPort
     private int port;
@@ -251,6 +255,43 @@ class RenderedPagesTest {
         assertThat(rest.getForEntity("/stats", String.class).getBody())
                 .contains("<title>Sign in - Trivial Trivia</title>")
                 .doesNotContain("Best score");
+    }
+
+    @Test
+    void historyRendersSavedDatesCountsAndLegacyGapsThroughTheContainer() {
+        String username = "render_history";
+        String cookie = signInAsPlayer(username);
+        jdbc.sql("update users set display_name = ? where username = ?")
+                .params("<script>History</script>", username).update();
+        cookie = signIn(username);
+        ResponseEntity<String> empty = get("/stats", cookie);
+        assertThat(empty.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(empty.getBody()).contains("<title>Your scores - Trivial Trivia</title>")
+                .contains("No finished rounds yet").contains("href=\"/play\"");
+
+        jdbc.sql("""
+                insert into rounds (user_id, score, correct_count, wrong_count, total_questions, finished_at)
+                select id, 37, 3, 2, 5, timestamp '2026-10-22 19:08:30' from users where username = ?
+                """).param(username).update();
+        jdbc.sql("""
+                insert into rounds (user_id, score, correct_count, wrong_count, total_questions, finished_at)
+                select id, 0, 0, 5, 5, timestamp '2026-10-20 09:08:30' from users where username = ?
+                """).param(username).update();
+        jdbc.sql("""
+                insert into rounds (user_id, score, finished_at)
+                select id, 90, timestamp '2026-10-30 09:08:30' from users where username = ?
+                """).param(username).update();
+
+        String page = get("/stats", cookie).getBody();
+        assertThat(page).contains("<title>Your scores - Trivial Trivia</title>")
+                .contains("22 Oct 2026, 19:08").contains("datetime=\"2026-10-22T19:08:30\"")
+                .contains("37 points").contains("3 / 5 correct").contains("0 / 5 correct")
+                .contains("Date unavailable").contains("Answer counts unavailable")
+                .contains("Dates shown in server time.").contains("Newest first")
+                .contains("&lt;script&gt;History&lt;/script&gt;").doesNotContain("<script>History</script>")
+                .doesNotContain("30 Oct 2026").doesNotContain("0 / 0");
+        assertThat(page.indexOf("22 Oct 2026, 19:08")).isLessThan(page.indexOf("20 Oct 2026, 09:08"));
+        assertThat(page.indexOf("20 Oct 2026, 09:08")).isLessThan(page.indexOf("Date unavailable"));
     }
 
     /**

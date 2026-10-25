@@ -19,6 +19,6 @@ public class RoundsController {
 
     @GetMapping("/api/v1/rounds")
     public ScoreHistoryDto myRounds() {
-        return ScoreHistoryDto.from(rounds.scoresFor(user.getUsername()));
+        return ScoreHistoryDto.from(rounds.historyFor(user.getUsername()));
     }
 }
